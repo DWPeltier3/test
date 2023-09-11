@@ -7,7 +7,7 @@ def print_results(hparams, y_test, y_pred):
     if hparams.output_type == 'mc':
         if hparams.output_length == 'seq':
             y_test=y_test.reshape((-1,1)) #finds 'pseudo' CM for sequence output (every time step is prediction)
-            y_pred=y_pred.reshape((-1,1)) #flatten predictions and labels into column vectors
+            y_pred=y_pred.reshape((-1,1)) #flatten both predictions and labels into one column vector each
         cm = confusion_matrix(y_test, y_pred)
         cm_display = ConfusionMatrixDisplay(cm).plot()
         plt.savefig(hparams.model_dir + "conf_matrix.png")
@@ -16,7 +16,7 @@ def print_results(hparams, y_test, y_pred):
     elif hparams.output_type == 'ml':
         if hparams.output_length == 'seq':
             y_test=y_test.reshape((-1,2)) #finds 'pseudo' CM for sequence output (every time step is prediction)
-            y_pred=y_pred.reshape((-1,2)) #flatten predictions and labels into 2 column vectors
+            y_pred=y_pred.reshape((-1,2)) #flatten both predictions and labels into 2 column vectors each
         print('\n*** CONFUSION MATRIX ***\n[TN FP]\n[FN TP]')
         cm = multilabel_confusion_matrix(y_test, y_pred)
         print('\nLabel0 (Comms)\n',cm[0])
