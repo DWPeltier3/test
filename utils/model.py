@@ -48,15 +48,13 @@ def fc_model(
     if hparams.output_type!='mh':
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
     else: # multihead classifier (2 outputs)
-        
         ## VERSION 1
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
         # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
+        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
         # outputs=[output_class, output_attr]
-        
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        concat=keras.layers.Concatenate()([x,output_attr])
+        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
         output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
         outputs=[output_class, output_attr]
 
@@ -85,6 +83,8 @@ def cnn_model(
         out_activation="softmax"
     elif hparams.output_type == 'ml':
         out_activation="sigmoid"
+    elif hparams.output_type == 'mh': # multihead = mc & ml
+        out_activation=["softmax","sigmoid"]
     ## MODEL
     inputs = keras.Input(shape=(input_shape))
     x = inputs
@@ -95,7 +95,18 @@ def cnn_model(
          x = keras.layers.MaxPooling1D(pool_size=pool_size, strides=stride, padding=padding)(x)
     flat = keras.layers.Flatten()(x) #(conv3)
     drop = keras.layers.Dropout(dropout)(flat)
-    outputs = keras.layers.Dense(output_shape, activation=out_activation)(drop)
+    if hparams.output_type!='mh':
+        outputs = keras.layers.Dense(output_shape, activation=out_activation)(drop)
+    else: # multihead classifier (2 outputs)
+        ## VERSION 1
+        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
+        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(drop)
+        # outputs=[output_class, output_attr]
+        ## VERSION 2
+        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
+        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
+        outputs=[output_class, output_attr]
 
     return keras.Model(inputs=inputs, outputs=outputs, name='CNN_' + hparams.output_type)
 
@@ -120,6 +131,8 @@ def fcn_model(
         out_activation="softmax"
     elif hparams.output_type == 'ml':
         out_activation="sigmoid"
+    elif hparams.output_type == 'mh': # multihead = mc & ml
+        out_activation=["softmax","sigmoid"]
     ## MODEL
     inputs = keras.Input(shape=(input_shape))
     x = inputs
@@ -130,7 +143,18 @@ def fcn_model(
          x = keras.layers.BatchNormalization()(x)
          x = keras.layers.ReLU()(x)
     gap = keras.layers.GlobalAveragePooling1D()(x)
-    outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
+    if hparams.output_type!='mh':
+        outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
+    else: # multihead classifier (2 outputs)
+        ## VERSION 1
+        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
+        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(gap)
+        # outputs=[output_class, output_attr]
+        ## VERSION 2
+        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
+        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
+        outputs=[output_class, output_attr]
 
     return keras.Model(inputs=inputs, outputs=outputs, name='FCN_' + hparams.output_type)
 
@@ -149,13 +173,26 @@ def resnet_model(
         out_activation="softmax"
     elif hparams.output_type == 'ml':
         out_activation="sigmoid"
+    elif hparams.output_type == 'mh': # multihead = mc & ml
+        out_activation=["softmax","sigmoid"]
     ## MODEL
     inputs = keras.Input(shape=(input_shape))
     x = inputs
     for (filter, kernel) in zip(filters, kernels):
          x=res_unit(hparams, num_res_layers, filter, kernel, x)
     gap = keras.layers.GlobalAveragePooling1D()(x)
-    outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
+    if hparams.output_type!='mh':
+        outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
+    else: # multihead classifier (2 outputs)
+        ## VERSION 1
+        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
+        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(gap)
+        # outputs=[output_class, output_attr]
+        ## VERSION 2
+        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
+        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
+        outputs=[output_class, output_attr]
 
     return keras.Model(inputs=inputs, outputs=outputs, name='ResNet_' + hparams.output_type)
 
@@ -232,18 +269,15 @@ def lstm_model(
                                 kernel_regularizer=kernel_regularizer,
                                 kernel_initializer=kernel_initializer)(x)
         count+=1
-    
     if hparams.output_type!='mh':
         # time distributed (dense) layer improves by 1%, but messes up "vector" output size
         # outputs = keras.layers.TimeDistributed(keras.layers.Dense(output_shape, activation=out_activation))(x)
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
     else: # multihead classifier (2 outputs)
-        
         ## VERSION 1
         # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
         # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
         # outputs=[output_class, output_attr]
-        
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
         concat=keras.layers.Concatenate()([x,output_attr])
