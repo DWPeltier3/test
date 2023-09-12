@@ -1,12 +1,13 @@
 import numpy as np
+import tensorflow as tf
 
-## IMPORT DATASET
-def import_dataset(hparams):
+## IMPORT DATA
+def import_data(hparams):
     
     data_path=hparams.data_path
-    model_type=hparams.model_type # fc=fully connect, cn=CNN, fcn=FCN, res=ResNet, tr=transformer
+    model_type=hparams.model_type # fc=fully connect, cn=CNN, fcn=FCN, res=ResNet, lstm=LSTM, tr=transformer
     window=hparams.window
-    output_type=hparams.output_type # mc=multiclass, ml=multilabel, mo=multiout
+    output_type=hparams.output_type # mc=multiclass, ml=multilabel, mh=multihead
     output_length=hparams.output_length # vec=vector, seq=sequence
     
     ## LOAD DATA
@@ -26,6 +27,8 @@ def import_dataset(hparams):
         num_inputs=time_steps*num_features
         x_train=np.reshape(x_train,(len(x_train),num_inputs))
         x_test=np.reshape(x_test,(len(x_test),num_inputs))
+    
+    ## VISUALIZE DATA
     print('\n*** DATA ***')
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
@@ -35,7 +38,7 @@ def import_dataset(hparams):
     print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,:num_features])
     print('ytrain sample (first instance)',y_train[0])
 
-    ## DETERMINE NUM DATA CLASSES AND NUM RUNS IN TEST SET (HELPS SHOW TEST RESULTS AT END)
+    ## DETERMINE NUM DATA CLASSES AND NUM RUNS IN TEST SET (HELPS SHOW PORTION OF TEST RESULTS AT END)
     num_classes=len(np.unique(y_test))
     num_runs=y_test.shape[0]
     rpc=num_runs//num_classes # runs per class
@@ -47,8 +50,8 @@ def import_dataset(hparams):
     print('num test runs:',num_runs)
     print(f'test set class start indices: {cs_idx}')
 
-    ## REDUCE OBSERVATION WINDOW
-    if window==-1 or window>time_steps: # if window = -1 or invalid window (too large>min_time): uses entire observation window (min_time for all runs)
+    ## REDUCE OBSERVATION WINDOW, IF REQUIRED
+    if window==-1 or window>time_steps: # if window = -1 (use entire window) or invalid window (too large>min_time): uses entire observation window (min_time) for all runs
         window=time_steps
     if model_type == 'fc':
         input_length=window*num_features
@@ -64,6 +67,9 @@ def import_dataset(hparams):
     print('xtest shape:',x_test.shape)
 
     ## IF MULTILABEL (and output length=vector), RESTRUCTURE LABELS
+    # check for errors in requested output_length
+    if model_type!='lstm' and model_type!='tr': # only 'lstm' and 'tr' can output sequences
+        output_length='vec'
     if (output_type=='ml' or output_type=='mh') and output_length!='seq':
         if output_type == 'mh': # multihead must preserve multiclass labels
             y_train_class=y_train
@@ -92,7 +98,7 @@ def import_dataset(hparams):
             print('ytest_class shape:',y_test_class.shape)
             print('ytrain_class sample (first instance)',y_train_class[0,:])
             print('ytest_class sample (first instance)',y_test_class[0,:])
-            y_train=[y_train_class,y_train]
+            y_train=[y_train_class,y_train] # combine class & attribute labels
             y_test=[y_test_class,y_test]
             print('\n*** MULTIHEAD COMBINED LABELS ***')
             print(f'ytrain shape: class {y_train[0].shape} and attr {y_train[1].shape}')
@@ -138,7 +144,7 @@ def import_dataset(hparams):
             print('ytest_class shape:',y_test_class.shape)
             print('ytrain_class sample (first instance)',y_train_class[0,:])
             print('ytest_class sample (first instance)',y_test_class[0,:])
-            y_train=[y_train_class,y_train]
+            y_train=[y_train_class,y_train] # combine class & attribute labels
             y_test=[y_test_class,y_test]
             print('\n*** MULTIHEAD COMBINED LABELS ***')
             print(f'ytrain shape: class {y_train[0].shape} and attr {y_train[1].shape}')
@@ -150,12 +156,66 @@ def import_dataset(hparams):
     # outputs
     if output_type == 'mc': # multiclass
         output_shape=len(np.unique(y_train)) # number of unique labels (auto flattens to find unique labels)
-    elif output_type == 'ml': #multilabel
-        output_shape=y_train.shape[-1] # number of binary labels; was [1], try [-1] last dimension
-    elif output_type == 'mh':
-        output_shape=[len(np.unique(y_train_class)),y_train[1].shape[-1]]
+    elif output_type == 'ml': # multilabel
+        output_shape=y_train.shape[-1] # number of binary labels; [-1]=last dimension (works for vector & sequence)
+    elif output_type == 'mh': # multihead
+        output_shape=[len(np.unique(y_train[0])),y_train[1].shape[-1]]
     print('\n*** SIZE MODEL INPUTS & OUTPUTS ***')
     print('input shape: ', input_shape)
     print('output shape: ', output_shape,'\n')
 
     return x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape
+
+
+
+## CREATE DATASET (to allow multiGPU performance)
+def get_dataset(hparams, x_train, y_train, x_test, y_test):
+
+    batch_size = hparams.batch_size
+    validation_split=hparams.train_val_split
+    num_val_samples = round(x_train.shape[0]*validation_split)
+    print(f'Val Split {validation_split} and # Val Samples {num_val_samples}')
+
+    # Reserve "num_val_samples" for validation
+    x_val = x_train[-num_val_samples:]
+    x_train = x_train[:-num_val_samples]
+
+    if hparams.output_type!='mh':
+        y_val = y_train[-num_val_samples:]
+        y_train = y_train[:-num_val_samples]
+        train_dataset=tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
+        val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
+        test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
+    else: # multihead classifier (2 outputs)
+        y_val=[]
+        for head in range(len(y_train)):
+            y_val.append(y_train[head][-num_val_samples:])
+            y_train[head] = y_train[head][:-num_val_samples]
+        train_dataset=tf.data.Dataset.from_tensor_slices((x_train, {'output_class':y_train[0], 'output_attr':y_train[1]})).batch(batch_size)
+        val_dataset=tf.data.Dataset.from_tensor_slices((x_val, {'output_class':y_val[0], 'output_attr':y_val[1]})).batch(batch_size)
+        test_dataset=tf.data.Dataset.from_tensor_slices((x_test, {'output_class':y_test[0], 'output_attr':y_test[1]})).batch(batch_size)
+    
+    # print('xtrain shape:',x_train.shape)
+    # print('x-val shape:',x_val.shape)
+    # print('ytrain[0] shape:',y_train[0].shape)
+    # print('y-val[0] shape:',y_val[0].shape)
+    # print('ytrain[1] shape:',y_train[1].shape)
+    # print('y-val[1] shape:',y_val[1].shape)
+    # # print('ytrain sample (first instance)',y_train[0])
+    # print('y-val[0] sample ',y_val[0][:5])
+    # print('y-val[1] sample ',y_val[1][:5,:])
+
+    # removes "auto sharding" warning
+    options = tf.data.Options()
+    options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+    train_dataset = train_dataset.with_options(options)
+    val_dataset = val_dataset.with_options(options)
+    test_dataset = test_dataset.with_options(options)
+
+    # autotune prefetching
+    autotune = tf.data.AUTOTUNE
+    train_dataset = train_dataset.prefetch(autotune)
+    val_dataset = val_dataset.prefetch(autotune)
+
+    
+    return (train_dataset, val_dataset, test_dataset)

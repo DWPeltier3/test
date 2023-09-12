@@ -104,7 +104,7 @@ def cnn_model(
         # outputs=[output_class, output_attr]
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
-        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        concat=keras.layers.Concatenate()([drop,output_attr]) #use attribute output to try and improve class output
         output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
         outputs=[output_class, output_attr]
 
@@ -152,7 +152,7 @@ def fcn_model(
         # outputs=[output_class, output_attr]
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        concat=keras.layers.Concatenate()([gap,output_attr]) #use attribute output to try and improve class output
         output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
         outputs=[output_class, output_attr]
 

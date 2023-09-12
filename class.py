@@ -5,7 +5,7 @@ from timeit import default_timer as timer
 from utils.elapse import elapse_time
 from utils.resources import print_resources
 import utils.params as params
-from utils.datapipeline import import_dataset
+from utils.datapipeline import import_data, get_dataset
 from utils.model import get_model
 from utils.compiler import get_loss, get_optimizer, get_metric
 from utils.callback import callback_list
@@ -19,9 +19,10 @@ hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throu
 params.save_hparams(hparams) #create model folder and save hyperparameters list .txt
 
 
-## IMPORT DATASET
-x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape = import_dataset(hparams)
-
+## IMPORT DATA
+x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape = import_data(hparams)
+## CREATE DATASET OBJECTS (to allow multi-GPU training)
+train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
 ## BUILD & COMPILE MODEL
 if hparams.mode == 'train':
@@ -32,6 +33,7 @@ if hparams.mode == 'train':
     if GPUs>1:
         print(f"GPUs availale: {GPUs}, MULTI GPU TRAINING")
         mirrored_strategy = tf.distribute.MirroredStrategy()
+        print('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
         with mirrored_strategy.scope():
             model = get_model(hparams, input_shape, output_shape)
             model.compile(
@@ -59,15 +61,26 @@ tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes
 
 ## TRAIN MODEL
 if hparams.mode == 'train':
+    
+    # # USING DATA
+    # model_history = model.fit(
+    #     x_train,
+    #     y_train,
+    #     validation_split=hparams.train_val_split,
+    #     epochs=hparams.num_epochs,
+    #     batch_size=hparams.batch_size,
+    #     verbose=0,
+    #     callbacks=callback_list(hparams)
+    #     )
+
+    # USING DATASET
     model_history = model.fit(
-        x_train,
-        y_train,
-        validation_split=hparams.train_val_split,
+        train_dataset,
+        validation_data=val_dataset,
         epochs=hparams.num_epochs,
-        batch_size=hparams.batch_size,
         verbose=0,
         callbacks=callback_list(hparams)
-    )
+        )
     ## PRINT HISTORY KEYS
     print("\nhistory.history.keys()\n", model_history.history.keys()) # this is what you want (only key names)
     ## PRINT TRAINING ELAPSE TIME
@@ -84,15 +97,20 @@ if hparams.output_type != 'mh':
 else: # multihead
     pred_class, pred_attr=model.predict(x_test, verbose=0) # multihead outputs 2 predictions (class and attribute)
 
-if hparams.output_type == 'mc' and hparams.output_length == 'vec':
+# check for errors in requested output_length
+output_length=hparams.output_length
+if hparams.model_type!='lstm' and hparams.model_type!='tr': # only 'lstm' and 'tr' can output sequences
+    output_length='vec'
+# convert from probability to label
+if hparams.output_type == 'mc' and output_length == 'vec':
     y_pred=np.argmax(pred,axis=1).reshape((-1,1))  #predicted class label for test data
-elif hparams.output_type == 'mc' and hparams.output_length == 'seq':
+elif hparams.output_type == 'mc' and output_length == 'seq':
     y_pred=np.argmax(pred,axis=2)  #predicted class label for test data
 elif hparams.output_type == 'ml':
     y_pred=pred.round()  #predicted attribute label for test data
 elif hparams.output_type == 'mh':
     y_pred_attr=pred_attr.round()
-    if hparams.output_length == 'vec':
+    if output_length == 'vec':
         y_pred_class=np.argmax(pred_class,axis=1).reshape((-1,1))
     else:
         y_pred_class=np.argmax(pred_class,axis=2)
