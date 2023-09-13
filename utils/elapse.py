@@ -26,4 +26,4 @@ def elapse_time(start):
     if elapse<60:
         seconds=math.trunc(elapse)
 
-    print(f"\nElapse Time: {hours}h, {minutes}m, {seconds}s")
+    print(f"\nElapse Time: {hours}h, {minutes}m, {seconds}s\n")

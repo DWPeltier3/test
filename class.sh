@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
-#SBATCH --time=01:00:00
+#SBATCH --time=08:00:00
 #SBATCH --partition=beards
 
 . /etc/profile
@@ -15,13 +15,13 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class.py \
+python class_tune.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
 --model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M)/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=20 \
---model_type="fc" \
+--model_type="lstm" \
 --output_type="mc" \
 --output_length="vec" \
 --dropout=0.2 \
@@ -31,6 +31,7 @@ python class.py \
 --initial_learning_rate=0.0001 \
 --callback_list="checkpoint, early_stopping, csv_log" \
 --patience=50 \
+--tune_epochs=1000 \
 --num_epochs=1000 \
 --batch_size=50 \
 --train_val_split=0.2 \

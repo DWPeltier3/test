@@ -162,7 +162,7 @@ def import_data(hparams):
         output_shape=[len(np.unique(y_train[0])),y_train[1].shape[-1]]
     print('\n*** SIZE MODEL INPUTS & OUTPUTS ***')
     print('input shape: ', input_shape)
-    print('output shape: ', output_shape,'\n')
+    print('output shape: ', output_shape)
 
     return x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape
 

@@ -7,7 +7,7 @@ from utils.elapse import elapse_time
 from utils.resources import print_resources
 import utils.params as params
 from utils.datapipeline import import_data, get_dataset
-from utils.model import get_model
+from utils.model_tune import get_model
 from utils.compiler import get_loss, get_optimizer, get_metric
 from utils.callback import callback_list
 from utils.results import print_results
@@ -19,52 +19,128 @@ GPUs=print_resources() # computation resources available
 hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throughout script below)
 params.save_hparams(hparams) #create model folder and save hyperparameters list .txt
 
-## TEST WRITE NEW PARAMS
-hparams.mlp_units=[100,30]
-print(f'mlp units {hparams.mlp_units}')
 
 ## IMPORT DATA
 x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape = import_data(hparams)
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)
 train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
-
-## BUILD & COMPILE MODEL
-if hparams.mode == 'train':
-    loss_weights=None #  single output head
-    if hparams.output_type == 'mh': # multihead output
-        loss_weights={'output_class':0.2,'output_attr':0.8}
-        print(f"Loss Weights: {loss_weights}\n")
-    if GPUs>1: # Multi-GPU
-        print(f"GPUs availale: {GPUs}, MULTI GPU TRAINING")
-        mirrored_strategy = tf.distribute.MirroredStrategy()
-        print('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
-        with mirrored_strategy.scope():
-            model = get_model(hparams, input_shape, output_shape)
-            model.compile(
-                loss=get_loss(hparams),
-                optimizer=get_optimizer(hparams),
-                metrics=get_metric(hparams),
-                loss_weights=loss_weights)
-    else: # single gpu
-        model = get_model(hparams, input_shape, output_shape)
-        model.compile(
-            loss=get_loss(hparams),
-            optimizer=get_optimizer(hparams),
-            metrics=get_metric(hparams),
-            loss_weights=loss_weights)
-
-elif hparams.mode == 'predict':
-    model = tf.keras.models.load_model(hparams.trained_model)
+loss_weights=None #  single output head
+if hparams.output_type == 'mh': # multihead output
+    loss_weights={'output_class':0.2,'output_attr':0.8}
+    print(f"Loss Weights: {loss_weights}\n")
 
 
+## HYPERPARAMETER TUNING
+def build_model(hp):
+    
+    # define model type and tuneable hyperparameters (store in "hparams" to build model)
+    model_type=hparams.model_type
+    if model_type == 'fc':
+        mlp_units=[]
+        for i in range(hp.Int("num_units", min_value=1, max_value=6, step=1)):
+            mlp_units.append(hp.Int(f"units_{i}", min_value=10, max_value=100, step=10))
+        hparams.mlp_units=mlp_units
+        hparams.dropout=hp.Float("dropout", min_value=0.2, max_value=0.5, step=0.1)
+
+    elif model_type == 'cn':
+        filters=[]
+        kernels=[]
+        for i in range(hp.Int("num_filters", min_value=1, max_value=6, step=1)):
+            filters.append(hp.Int(f"filter_{i}", min_value=32, max_value=256, step=32))
+            kernels.append(hp.Int(f"kernel_{i}", min_value=3, max_value=7, step=2))
+        hparams.filters=filters
+        hparams.kernels=kernels
+        hparams.pool_size=hp.Int("pool_size", min_value=2, max_value=5, step=1)
+        hparams.dropout=hp.Float("dropout", min_value=0, max_value=0.5, step=0.1)
+
+    elif model_type == 'fcn':
+        filters=[]
+        kernels=[]
+        for i in range(hp.Int("num_filters", min_value=1, max_value=6, step=1)):
+            filters.append(hp.Int(f"filter_{i}", min_value=32, max_value=256, step=32))
+            kernels.append(hp.Int(f"kernel_{i}", min_value=3, max_value=7, step=2))
+        hparams.filters=filters
+        hparams.kernels=kernels
+
+    elif model_type == 'res':
+        hparams.num_res_layers=hp.Int("num_res_layers", min_value=3, max_value=6, step=1)
+        filters=[]
+        kernels=[]
+        for i in range(hp.Int("num_filters", min_value=3, max_value=9, step=1)):
+            filters.append(hp.Int(f"filter_{i}", min_value=32, max_value=256, step=32))
+            kernels.append(hp.Int(f"kernel_{i}", min_value=3, max_value=7, step=2))
+        hparams.filters=filters
+        hparams.kernels=kernels
+
+    elif model_type == 'lstm':
+        units=[]
+        for i in range(hp.Int("num_units", min_value=1, max_value=6, step=1)):
+            units.append(hp.Int(f"units_{i}", min_value=10, max_value=100, step=10))
+        hparams.units=units
+        hparams.dropout=hp.Float("dropout", min_value=0.2, max_value=0.5, step=0.1)
+    
+    # window = hp.Int("window", min_value=10, max_value=58, step=4, default=20)
+    # hparams.window=window
+    # activation = hp.Choice("activation", ["relu", "tanh"])
+    # dropout = hp.Boolean("dropout")
+    # lr = hp.Float("lr", min_value=1e-4, max_value=1e-2, sampling="log")
+
+    # call existing model-building code with the hyperparameter values
+    model = get_model(hparams, input_shape, output_shape)
+    model.compile(
+        loss=get_loss(hparams),
+        optimizer=get_optimizer(hparams),
+        metrics=get_metric(hparams),
+        loss_weights=loss_weights)
+    
+    return model
+
+## DEFINE SEARCH SPACE
+# tuner types: RandomSearch( , BayesianOptimization( , Hyperband(
+tuner = keras_tuner.RandomSearch(
+    hypermodel=build_model,
+    objective="val_loss",
+    max_trials=200,
+    executions_per_trial=1,
+    overwrite=True,
+    directory=hparams.model_dir,
+    project_name="tune")
+print('\n*** SEARCH SPACE SUMMARY ***')
+tuner.search_space_summary() # print search space summary
+
+
+## START HYPERTUNING
+stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=hparams.patience)
+tuner.search(train_dataset,
+             validation_data=val_dataset,
+             epochs=hparams.tune_epochs,
+             verbose=0,
+             callbacks=[stop_early]
+             )
+
+
+## SEARCH RESULTS
+print('\n*** RESULTS SUMMARY (TOP 3) ***')
+tuner.results_summary(3)
+
+
+# GET BEST HYPER-PARAMETERS FOUND
+print('\n*** BEST H-PARAMS ***')
+print(tuner.get_best_hyperparameters()[0].values,'\n')
+## PRINT TUNING ELAPSE TIME
+elapse_time(start)
+
+
+# BUILD BEST MODEL
+model = build_model(tuner.get_best_hyperparameters()[0])
 ## VISUALIZE MODEL
 model.summary()
-# make GRAPHVIZ plot of model
+# MAKE GRAPHVIZ MODEL DIAGRAM
 tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
-## TRAIN MODEL
+## TRAIN BEST MODEL
 if hparams.mode == 'train':
 
     # # USING DATA
