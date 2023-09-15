@@ -146,7 +146,8 @@ else: # multihead output
 
 
 ## EVALUATE MODEL
-eval=model.evaluate(x_test, y_test, verbose=0) #loss and accuracy
+# eval=model.evaluate(x_test, y_test, verbose=0) #loss and accuracy
+eval=model.evaluate(test_dataset, verbose=0) #loss and accuracy
 print('model.metrics_names:\n',model.metrics_names) #print evaluation metrics names (loss and accuracy)
 print(eval) #print evaluation metrics numbers
 

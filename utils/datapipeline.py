@@ -217,5 +217,9 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     train_dataset = train_dataset.prefetch(autotune)
     val_dataset = val_dataset.prefetch(autotune)
 
+    # cache and shuffle
+    train_dataset = train_dataset.cache().shuffle(train_dataset.cardinality())
+    val_dataset = val_dataset.cache().shuffle(val_dataset.cardinality())
+
     
     return (train_dataset, val_dataset, test_dataset)

@@ -28,7 +28,7 @@ train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train
 loss_weights=None #  single output head
 if hparams.output_type == 'mh': # multihead output
     loss_weights={'output_class':0.2,'output_attr':0.8}
-    print(f"Loss Weights: {loss_weights}\n")
+    # print(f"Loss Weights: {loss_weights}\n")
 
 
 ## HYPERPARAMETER TUNING
@@ -103,9 +103,19 @@ tuner = keras_tuner.RandomSearch(
     objective="val_loss",
     max_trials=200,
     executions_per_trial=1,
-    overwrite=True,
-    directory=hparams.model_dir,
+    # overwrite=True,
+    # directory=hparams.model_dir,
+    overwrite=False,
+    directory='/home/donald.peltier/swarm/model/swarm_class09-13_18-01-12',
     project_name="tune")
+# tuner = keras_tuner.Hyperband(
+#     hypermodel=build_model,
+#     objective="val_loss",
+#     max_epochs=hparams.tune_epochs,
+#     overwrite=True,
+#     directory=hparams.model_dir,
+#     project_name="tune")
+
 print('\n*** SEARCH SPACE SUMMARY ***')
 tuner.search_space_summary() # print search space summary
 

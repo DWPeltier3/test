@@ -234,7 +234,7 @@ def res_unit(
     return output
 
 
-
+## LONG SHORT TERM MEMORY (LSTM)
 def lstm_model(
         hparams,
         input_shape,
