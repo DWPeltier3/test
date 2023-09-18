@@ -222,11 +222,11 @@ def res_unit(
                                  kernel_initializer=kernel_initializer)(x)
          x = keras.layers.BatchNormalization()(x)
          if count==num_res_layers: #on last filter add original input (skip formated=Conv1D, kernel=1) before Relu
-            print("KERNEL (1D): ",kernel)
-            print("skip: ",skip.shape)
-            print("x original: ",x.shape)
+            # print("KERNEL (1D): ",kernel)
+            # print("skip: ",skip.shape)
+            # print("x original: ",x.shape)
             x=x+skip
-            print("x = x + skip: ",x.shape,'\n')
+            # print("x = x + skip: ",x.shape,'\n')
          x = keras.layers.ReLU()(x)
          count+=1
     output = x

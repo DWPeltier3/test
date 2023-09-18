@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=24:00:00
 #SBATCH --partition=beards
 
@@ -21,8 +21,8 @@ python class_tune.py \
 --model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=20 \
---model_type="lstm" \
---output_type="mc" \
+--model_type="fc" \
+--output_type="mh" \
 --output_length="vec" \
 --dropout=0.2 \
 --kernel_initializer="he_normal" \
@@ -31,7 +31,8 @@ python class_tune.py \
 --initial_learning_rate=0.0001 \
 --callback_list="checkpoint, early_stopping, csv_log" \
 --patience=50 \
---tune_epochs=100 \
+--tune_type="h" \
+--tune_epochs=1000 \
 --num_epochs=1000 \
 --batch_size=50 \
 --train_val_split=0.2 \
@@ -45,3 +46,5 @@ python class_tune.py \
 #                                              ** only "lstm" or "tr" can have "seq" output
 # kernel_initializer = "glorot_normal" "he_uniform/normal"
 # kernel_regularizer = "none" "l1" "l2" "l1_l2"
+#
+# tune_type = tuner type: "r"=random, "b"=bayesian, "h"=hyperband

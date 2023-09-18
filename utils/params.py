@@ -52,7 +52,9 @@ def make_argparser():
     parser.add_argument("--callback_list", type=str, default="checkpoint, early_stopping, csv_log, save", help="comma separated callbacks to be added")
     parser.add_argument("--patience", type=int, default=50, help="training epochs with negligible improvement before training stops")
     
+    parser.add_argument("--tune_type", type=str, default="r", help="tuner type: r=random, b=bayesian, h=hyperband")
     parser.add_argument("--tune_epochs", type=int, default=100, help="number of epochs used in Keras Tuner")
+    
     parser.add_argument("--num_epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("--batch_size", type=int, default=50, help="bacth size")
     parser.add_argument("--train_val_split", type=float, default=0.2, help="training validation holdout percentage 0 to 1 (ie. 0.2=20%)")

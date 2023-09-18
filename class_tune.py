@@ -97,24 +97,33 @@ def build_model(hp):
     return model
 
 ## DEFINE SEARCH SPACE
-# tuner types: RandomSearch( , BayesianOptimization( , Hyperband(
-tuner = keras_tuner.RandomSearch(
-    hypermodel=build_model,
-    objective="val_loss",
-    max_trials=200,
-    executions_per_trial=1,
-    # overwrite=True,
-    # directory=hparams.model_dir,
-    overwrite=False,
-    directory='/home/donald.peltier/swarm/model/swarm_class09-13_18-01-12',
-    project_name="tune")
-# tuner = keras_tuner.Hyperband(
-#     hypermodel=build_model,
-#     objective="val_loss",
-#     max_epochs=hparams.tune_epochs,
-#     overwrite=True,
-#     directory=hparams.model_dir,
-#     project_name="tune")
+# tuner types: RandomSearch( , BayesianOptimization( , Hyperband
+tuner=hparams.tune_type
+if tuner=="r": # random search
+    tuner = keras_tuner.RandomSearch(
+        hypermodel=build_model,
+        objective="val_loss",
+        max_trials=200,
+        executions_per_trial=1,
+        ## USE FOR NEW TUNE
+        overwrite=True,
+        directory=hparams.model_dir,
+        ## USE TO CONTINUE PREVIOUS TUNE
+        # overwrite=False,
+        # directory='/home/donald.peltier/swarm/model/swarm_class09-13_18-01-12',
+        project_name="tune")
+elif tuner=="h": # hyperband search
+    tuner = keras_tuner.Hyperband(
+        hypermodel=build_model,
+        objective="val_loss",
+        max_epochs=hparams.tune_epochs,
+        ## USE FOR NEW TUNE
+        overwrite=True,
+        directory=hparams.model_dir,
+        ## USE TO CONTINUE PREVIOUS TUNE
+        # overwrite=False,
+        # directory="/home/donald.peltier/swarm/model/swarm_class09-14_09-47-40",
+        project_name="tune")
 
 print('\n*** SEARCH SPACE SUMMARY ***')
 tuner.search_space_summary() # print search space summary
