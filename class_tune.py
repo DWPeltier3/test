@@ -64,7 +64,7 @@ def build_model(hp):
         hparams.kernels=kernels
 
     elif model_type == 'res':
-        hparams.num_res_layers=hp.Int("num_res_layers", min_value=3, max_value=6, step=1)
+        hparams.num_res_layers=hp.Int("num_res_layers", min_value=1, max_value=6, step=1)
         filters=[]
         kernels=[]
         for i in range(hp.Int("num_filters", min_value=3, max_value=9, step=1)):
@@ -76,9 +76,9 @@ def build_model(hp):
     elif model_type == 'lstm':
         units=[]
         for i in range(hp.Int("num_units", min_value=1, max_value=6, step=1)):
-            units.append(hp.Int(f"units_{i}", min_value=10, max_value=100, step=10))
+            units.append(hp.Int(f"units_{i}", min_value=10, max_value=150, step=10))
         hparams.units=units
-        hparams.dropout=hp.Float("dropout", min_value=0.2, max_value=0.5, step=0.1)
+        hparams.dropout=hp.Float("dropout", min_value=0.0, max_value=0.05, step=0.05)
     
     # window = hp.Int("window", min_value=10, max_value=58, step=4, default=20)
     # hparams.window=window
@@ -122,7 +122,7 @@ elif tuner=="h": # hyperband search
         directory=hparams.model_dir,
         ## USE TO CONTINUE PREVIOUS TUNE
         # overwrite=False,
-        # directory="/home/donald.peltier/swarm/model/swarm_class09-14_09-47-40",
+        # directory="/home/donald.peltier/swarm/model/swarm_class09-18_16-26-50_HTuneFCml_NoValues",
         project_name="tune")
 
 print('\n*** SEARCH SPACE SUMMARY ***')

@@ -298,14 +298,18 @@ def tr_model(
         output_shape,
         ):
     ## PARAMETERS
-    units=[40,20] # each entry becomes an LSTM layer
-    kernel_initializer=hparams.kernel_initializer
-    dropout=hparams.dropout
+    # kernel_initializer=hparams.kernel_initializer
+    # dropout=hparams.dropout
+
     num_layers = 4
-    d_model = 128
+    # d_model = 128
+    d_model = input_shape[1]
+    print(f'd_model {d_model}')
     dff = 512
     num_heads = 8
-    dropout_rate = 0.1
+    dropout= 0.1
+    embed_type='fc'
+
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
     else:
@@ -317,36 +321,21 @@ def tr_model(
     elif hparams.output_type == 'mh': # multihead = mc & ml
         out_activation=["softmax","sigmoid"]
     ## MODEL
-    inputs = keras.Input(shape=(input_shape))
-    x = inputs
-    count=1
-    return_sequences=True # must return sequences when linking LSTM layers together
-    for unit in units:
-        if count == len(units): # on last LSTM unit, determine output: sequence or vector
-            if hparams.output_length == "seq":
-                return_sequences=True # sequence output
-            else:
-                return_sequences=False # vector output
-        x = keras.layers.LSTM(unit,return_sequences=return_sequences, dropout=dropout,
-                                kernel_regularizer=kernel_regularizer,
-                                kernel_initializer=kernel_initializer)(x)
-        count+=1
-    if hparams.output_type!='mh':
-        # time distributed (dense) layer improves by 1%, but messes up "vector" output size
-        # outputs = keras.layers.TimeDistributed(keras.layers.Dense(output_shape, activation=out_activation))(x)
-        outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
-    else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        concat=keras.layers.Concatenate()([x,output_attr])
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+    transformer = Transformer(
+        num_layers=num_layers,
+        d_model=d_model,
+        num_heads=num_heads,
+        dff=dff,
+        # input_vocab_size=tokenizers.pt.get_vocab_size().numpy(),
+        # target_vocab_size=tokenizers.en.get_vocab_size().numpy(),
+        dropout_rate=dropout,
+        embed_type=embed_type,
+        out_activation=out_activation,
+        output_shape=output_shape,
+        name='Trans_' + hparams.output_type
+        )
 
-    return keras.Model(inputs=inputs, outputs=outputs, name='LSTM_' + hparams.output_type)
+    return transformer
 
 def positional_encoding(length, depth):
     depth = depth/2
@@ -364,7 +353,9 @@ def positional_encoding(length, depth):
     return tf.cast(pos_encoding, dtype=tf.float32)
 
 class PositionalEmbedding(tf.keras.layers.Layer):
-    def __init__(self, vocab_size, d_model, embed_type='fc'):
+    def __init__(self,
+                #  vocab_size,
+                 d_model, embed_type='fc'):
         super().__init__()
         self.d_model = d_model
         if embed_type == 'lstm':
@@ -377,18 +368,22 @@ class PositionalEmbedding(tf.keras.layers.Layer):
 
     def call(self, x):
         length = tf.shape(x)[1]
+        # x = tf.cast(x, tf.float32) #fix type issue for labels?
         x = self.embed(x)
+        # print(f'x embed {x}')
         x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
-        x = x + self.pos_encoding[tf.newaxis, :length, :self.d_model]
+        # print(f'x sqrt {x}')
+        # print(f'pos encod {self.pos_encoding[tf.newaxis, :length, :self.d_model]}')
+        x = x + self.pos_encoding[tf.newaxis, :length, :self.d_model] # :self.d_model
         return x
 
 class BaseAttention(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__()
         self.mha = tf.keras.layers.MultiHeadAttention(**kwargs)
-        self.layernorm = tf.keras.layers.LayerNormalization()
         self.add = tf.keras.layers.Add()
-
+        self.layernorm = tf.keras.layers.LayerNormalization()
+        
 class CrossAttention(BaseAttention):
     def call(self, x, context):
         attn_output, attn_scores = self.mha(
@@ -455,12 +450,14 @@ class EncoderLayer(tf.keras.layers.Layer):
 
 class Encoder(tf.keras.layers.Layer):
     def __init__(self, *, num_layers, d_model, num_heads,
-                 dff, vocab_size, dropout_rate=0.1, embed_type='fc'):
+                 dff,
+                 #  vocab_size,
+                 dropout_rate=0.1, embed_type='fc'):
         super().__init__()
         self.d_model = d_model
         self.num_layers = num_layers
         self.pos_embedding = PositionalEmbedding(
-            vocab_size=vocab_size,
+            # vocab_size=vocab_size,
             d_model=d_model,
             embed_type=embed_type)
         self.enc_layers = [
@@ -486,7 +483,7 @@ class DecoderLayer(tf.keras.layers.Layer):
                  num_heads,
                  dff,
                  dropout_rate=0.1):
-        super(DecoderLayer, self).__init__()
+        super().__init__() #super(DecoderLayer, self).__init__()
         self.causal_self_attention = CausalSelfAttention(
             num_heads=num_heads,
             key_dim=d_model,
@@ -498,22 +495,24 @@ class DecoderLayer(tf.keras.layers.Layer):
         self.ffn = FeedForward(d_model, dff)
 
     def call(self, x, context):
-        x = self.causal_self_attention(x=x)
-        x = self.cross_attention(x=x, context=context)
+        x = self.causal_self_attention(x) #(x=x)
+        x = self.cross_attention(x, context) #(x=x, context=context)
         x = self.ffn(x)  # Shape `(batch_size, seq_len, d_model)`.
         # Cache the last attention scores for plotting later
         self.last_attn_scores = self.cross_attention.last_attn_scores
         return x
 
 class Decoder(tf.keras.layers.Layer):
-    def __init__(self, *, num_layers, d_model, num_heads, dff, vocab_size,
-                 dropout_rate=0.1):
-        super(Decoder, self).__init__()
+    def __init__(self, *, num_layers, d_model, num_heads, dff,
+                 #  vocab_size,
+                 dropout_rate=0.1, embed_type='fc'):
+        super().__init__() #super(Decoder, self).__init__()
         self.d_model = d_model
         self.num_layers = num_layers
         self.pos_embedding = PositionalEmbedding(
-            vocab_size=vocab_size,
-            d_model=d_model)
+            # vocab_size=vocab_size,
+            d_model=d_model,
+            embed_type=embed_type)
         self.dropout = tf.keras.layers.Dropout(dropout_rate)
         self.dec_layers = [
             DecoderLayer(d_model=d_model, num_heads=num_heads,
@@ -523,6 +522,8 @@ class Decoder(tf.keras.layers.Layer):
 
     def call(self, x, context):
         # `x` is token-IDs shape (batch, target_seq_len)
+        # x = tf.cast(x, tf.float32) #fix type issue for labels?
+        x = tf.expand_dims(x, -1) #add "dimension" axis = 1
         x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
         x = self.dropout(x)
         for i in range(self.num_layers):
@@ -531,31 +532,38 @@ class Decoder(tf.keras.layers.Layer):
         return x # shape '(batch_size, target_seq_len, d_model)'
 
 class Transformer(tf.keras.Model):
-    def __init__(self, *, num_layers, d_model, num_heads, dff, 
-                 input_vocab_size, target_vocab_size, 
-                  dropout_rate=0.1, embed_type='fc'):
-        super().__init__()
+    def __init__(self, num_layers, d_model, num_heads, dff, 
+                #  input_vocab_size, target_vocab_size, 
+                  dropout_rate, embed_type,
+                  out_activation, output_shape, name):
+        super().__init__(name=name)
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
-                               vocab_size=input_vocab_size,
+                            #    vocab_size=input_vocab_size,
                                dropout_rate=dropout_rate, embed_type=embed_type)
         self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
-                               vocab_size=target_vocab_size,
-                               dropout_rate=dropout_rate)
-        self.final_layer = tf.keras.layers.Dense(target_vocab_size)
+                            #    vocab_size=target_vocab_size,
+                               dropout_rate=dropout_rate, embed_type=embed_type)
+        self.final_layer = tf.keras.layers.Dense(output_shape, activation=out_activation)
 
     def call(self, inputs):
         # To use a Keras model with `.fit` you must pass all your inputs in the
         # first argument.
         context, x  = inputs
+        # print("\n*** ENCODER ***")
         context = self.encoder(context)  # (batch_size, context_len, d_model)
+        # print("\n*** DECODER ***")
         x = self.decoder(x, context)  # (batch_size, target_len, d_model)
 
         # Final linear layer output.
-        logits = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-        try:
-            del logits._keras_mask # Drop the keras mask, so it doesn't scale the losses/metrics
-        except AttributeError:
-            pass
-        return logits # Return the final output and the attention weights
+        output = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+        # try:
+        #     del logits._keras_mask # Drop the keras mask, so it doesn't scale the losses/metrics
+        # except AttributeError:
+        #     pass
+        return output # Return the final output and the attention weights
+    
+    def get_config(self):
+        base_config = super().get_config()
+        return base_config

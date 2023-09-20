@@ -186,6 +186,20 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         train_dataset=tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
+        
+        if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
+            print("*** TRANSFORMER DATASET ***")
+            train_dataset=make_batches(train_dataset)
+            val_dataset=make_batches(val_dataset)
+            test_dataset=make_batches(test_dataset)
+
+            # example=train_dataset.take(3)
+            # for element in example:
+            #     print(f'train element {element}')
+            # for element in example.as_numpy_iterator():
+            #     print(f'train element as np_it {element}')
+
+
     else: # multihead classifier (2 outputs)
         y_val=[]
         for head in range(len(y_train)):
@@ -201,7 +215,7 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     # print('y-val[0] shape:',y_val[0].shape)
     # print('ytrain[1] shape:',y_train[1].shape)
     # print('y-val[1] shape:',y_val[1].shape)
-    # # print('ytrain sample (first instance)',y_train[0])
+    # print('ytrain sample (first instance)',y_train[0])
     # print('y-val[0] sample ',y_val[0][:5])
     # print('y-val[1] sample ',y_val[1][:5,:])
 
@@ -220,6 +234,10 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     # cache and shuffle
     train_dataset = train_dataset.cache().shuffle(train_dataset.cardinality())
     val_dataset = val_dataset.cache().shuffle(val_dataset.cardinality())
-
     
     return (train_dataset, val_dataset, test_dataset)
+
+def make_batches(ds):
+  return (ds.map(prepare_batch, tf.data.AUTOTUNE))
+def prepare_batch(data, label):
+    return (data, label), label
