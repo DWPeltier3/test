@@ -1,4 +1,6 @@
+import tensorflow as tf
 from tensorflow import keras
+import numpy as np
 
 def get_model(hparams, input_shape, output_shape):
 
@@ -14,7 +16,9 @@ def get_model(hparams, input_shape, output_shape):
         model=resnet_model(hparams, input_shape, output_shape)
     elif model_type == 'lstm':
         model=lstm_model(hparams, input_shape, output_shape)
-    
+    elif model_type == 'tr':
+        model=tr_model(hparams, input_shape, output_shape)
+        
     return model
 
 
@@ -25,7 +29,6 @@ def fc_model(
         output_shape,
         ):
     ## PARAMETERS
-    # mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
     mlp_units=hparams.mlp_units
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
@@ -190,7 +193,7 @@ def resnet_model(
         # outputs=[output_class, output_attr]
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        concat=keras.layers.Concatenate()([gap,output_attr]) #use attribute output to try and improve class output
         output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
         outputs=[output_class, output_attr]
 
@@ -285,3 +288,72 @@ def lstm_model(
         outputs=[output_class, output_attr]
 
     return keras.Model(inputs=inputs, outputs=outputs, name='LSTM_' + hparams.output_type)
+
+
+## TRANSFORMER
+def tr_model(
+        hparams,
+        input_shape,
+        output_shape,
+        ):
+    ## PARAMETERS
+    length=input_shape[0]
+    num_enc_layers = hparams.num_enc_layers # number of encoder layers
+    dinput = hparams.dinput #128 or = input_shape[1]
+    dff = hparams.dff # 512
+    num_heads = hparams.num_heads # 8
+    print(f'length {length}')
+    print(f'dimensions {dinput}')
+    kernel_initializer=hparams.kernel_initializer
+    dropout=hparams.dropout
+    if hparams.kernel_regularizer == "none":
+        kernel_regularizer=None
+    else:
+        kernel_regularizer=hparams.kernel_regularizer
+    if hparams.output_type == 'mc':
+        out_activation="softmax"
+    elif hparams.output_type == 'ml':
+        out_activation="sigmoid"
+    elif hparams.output_type == 'mh': # multihead = mc & ml
+        out_activation=["softmax","sigmoid"]
+    ## MODEL
+    inputs = keras.Input(shape=input_shape)
+    x = inputs
+    # input enmbedding
+    x = tf.keras.layers.Conv1D(filters=dinput, kernel_size=1, activation="relu")(x)
+    # position encoding
+    x *= tf.math.sqrt(tf.cast(dinput, tf.float32))
+    x = x + positional_encoding(length=2048, depth=dinput)[tf.newaxis, :length, :dinput]
+    for _ in range(num_enc_layers):
+        x = transformer_encoder(x, dinput, num_heads, dff, dropout)
+    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
+    outputs = tf.keras.layers.Dense(output_shape, activation=out_activation)(x)
+    
+    return keras.Model(inputs=inputs, outputs=outputs, name='TRANS_' + hparams.output_type)
+
+def positional_encoding(length, depth):
+    if depth % 2 == 1: depth += 1  # depth must be even
+    depth = depth/2
+    positions = np.arange(length)[:, np.newaxis]     # (seq, 1)
+    depths = np.arange(depth)[np.newaxis, :]/depth   # (1, depth)
+    angle_rates = 1 / (10000**depths)         # (1, depth)
+    angle_rads = positions * angle_rates      # (seq, depth)
+    pos_encoding = np.concatenate(
+       [np.sin(angle_rads), np.cos(angle_rads)],axis=-1) 
+    return tf.cast(pos_encoding, dtype=tf.float32)
+
+def transformer_encoder(input, dinput, num_heads, dff, dropout):
+    ## SELF ATTENTION
+    attn_output = tf.keras.layers.MultiHeadAttention(
+        key_dim=dinput, num_heads=num_heads, dropout=dropout)(input, input)
+    x = tf.keras.layers.Add()([input, attn_output])
+    x = tf.keras.layers.LayerNormalization()(x) #epsilon=1e-6
+    skip = x
+    ## FEED FORWARD
+    x = tf.keras.layers.Dense(dff, activation='relu')(x)
+    x = tf.keras.layers.Dense(dinput)(x)
+    ff_output = tf.keras.layers.Dropout(dropout)(x)
+    x = tf.keras.layers.Add()([skip, ff_output])
+    x = tf.keras.layers.LayerNormalization()(x)
+    return x

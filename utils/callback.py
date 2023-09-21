@@ -14,10 +14,11 @@ def callback_list(hparams):
 def _model_checkpoint(hparams):
     checkpoint=tf.keras.callbacks.ModelCheckpoint(
         filepath=hparams.model_dir + "checkpoint.h5",
+        # filepath=hparams.model_dir + "checkpoint.keras", # doesn't work b/c ['options'] bug
         monitor='val_loss',
         verbose=0,
         save_best_only=True,
-        save_weights_only=False,
+        save_weights_only=False, #full model is saved (model.save(filepath))
         mode='auto'
         )
     return checkpoint

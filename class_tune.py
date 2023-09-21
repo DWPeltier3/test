@@ -80,6 +80,13 @@ def build_model(hp):
         hparams.units=units
         hparams.dropout=hp.Float("dropout", min_value=0.0, max_value=0.05, step=0.05)
     
+    elif model_type == 'tr':
+        hparams.num_enc_layers=hp.Int("num_enc_layers", min_value=1, max_value=8, step=1)
+        hparams.num_heads=hp.Int("num_heads", min_value=2, max_value=12, step=2)
+        hparams.dinput=hp.Int("dinput", min_value=40, max_value=200, step=20)
+        hparams.dff=hp.Int("dff", min_value=300, max_value=700, step=100)
+        hparams.dropout=hp.Float("dropout", min_value=0.2, max_value=0.5, step=0.1)
+
     # window = hp.Int("window", min_value=10, max_value=58, step=4, default=20)
     # hparams.window=window
     # activation = hp.Choice("activation", ["relu", "tanh"])
@@ -118,11 +125,11 @@ elif tuner=="h": # hyperband search
         objective="val_loss",
         max_epochs=hparams.tune_epochs,
         ## USE FOR NEW TUNE
-        overwrite=True,
-        directory=hparams.model_dir,
+        # overwrite=True,
+        # directory=hparams.model_dir,
         ## USE TO CONTINUE PREVIOUS TUNE
-        # overwrite=False,
-        # directory="/home/donald.peltier/swarm/model/swarm_class09-18_16-26-50_HTuneFCml_NoValues",
+        overwrite=False,
+        directory="/home/donald.peltier/swarm/model/swarm_class09-20_15-06-37RESmh",
         project_name="tune")
 
 print('\n*** SEARCH SPACE SUMMARY ***')
@@ -206,9 +213,9 @@ if hparams.output_type == 'mc' and output_length == 'vec':
 elif hparams.output_type == 'mc' and output_length == 'seq':
     y_pred=np.argmax(pred,axis=2)  #predicted class label for test data
 elif hparams.output_type == 'ml':
-    y_pred=pred.round()  #predicted attribute label for test data
+    y_pred=pred.round().astype(np.int32)  #predicted attribute label for test data
 elif hparams.output_type == 'mh':
-    y_pred_attr=pred_attr.round()
+    y_pred_attr=pred_attr.round().astype(np.int32)
     if output_length == 'vec':
         y_pred_class=np.argmax(pred_class,axis=1).reshape((-1,1))
     else:

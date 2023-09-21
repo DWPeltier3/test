@@ -194,7 +194,7 @@ def resnet_model(
         # outputs=[output_class, output_attr]
         ## VERSION 2
         output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+        concat=keras.layers.Concatenate()([gap,output_attr]) #use attribute output to try and improve class output
         output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
         outputs=[output_class, output_attr]
 
@@ -291,25 +291,24 @@ def lstm_model(
     return keras.Model(inputs=inputs, outputs=outputs, name='LSTM_' + hparams.output_type)
 
 
-## TRANSFORMER
+## TRANSFORMER (functional model)
 def tr_model(
         hparams,
         input_shape,
         output_shape,
         ):
     ## PARAMETERS
-    # kernel_initializer=hparams.kernel_initializer
-    # dropout=hparams.dropout
-
-    num_layers = 4
-    # d_model = 128
-    d_model = input_shape[1]
-    print(f'd_model {d_model}')
+    length=input_shape[0]
+    print(f'length {length}')
+    num_enc_layers = 4 # number of encoder layers
+    dinput = 128
+    # dinput = input_shape[1]
+    print(f'dinput {dinput}')
     dff = 512
-    num_heads = 8
-    dropout= 0.1
-    embed_type='fc'
+    num_heads = 4
 
+    kernel_initializer=hparams.kernel_initializer
+    dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
     else:
@@ -321,35 +320,89 @@ def tr_model(
     elif hparams.output_type == 'mh': # multihead = mc & ml
         out_activation=["softmax","sigmoid"]
     ## MODEL
-    transformer = Transformer(
-        num_layers=num_layers,
-        d_model=d_model,
-        num_heads=num_heads,
-        dff=dff,
-        # input_vocab_size=tokenizers.pt.get_vocab_size().numpy(),
-        # target_vocab_size=tokenizers.en.get_vocab_size().numpy(),
-        dropout_rate=dropout,
-        embed_type=embed_type,
-        out_activation=out_activation,
-        output_shape=output_shape,
-        name='Trans_' + hparams.output_type
-        )
+    inputs = keras.Input(shape=input_shape)
+    x = inputs
+    # input enmbedding
+    x = tf.keras.layers.Conv1D(filters=dinput, kernel_size=1, activation="relu")(x)
+    # position encoding
+    x *= tf.math.sqrt(tf.cast(dinput, tf.float32))
+    x = x + positional_encoding(length=2048, depth=dinput)[tf.newaxis, :length, :dinput]
+    for _ in range(num_enc_layers):
+        x = transformer_encoder(x, dinput, num_heads, dff, dropout)
+    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    x = tf.keras.layers.Dropout(dropout)(x)
+    outputs = tf.keras.layers.Dense(output_shape, activation=out_activation)(x)
+    
+    return keras.Model(inputs=inputs, outputs=outputs, name='TRANS_' + hparams.output_type)
 
-    return transformer
+def transformer_encoder(input, dinput, num_heads, dff, dropout):
+    ## SELF ATTENTION
+    attn_output = tf.keras.layers.MultiHeadAttention(
+        key_dim=dinput, num_heads=num_heads, dropout=dropout)(input, input)
+    x = tf.keras.layers.Add()([input, attn_output])
+    x = tf.keras.layers.LayerNormalization()(x) #epsilon=1e-6
+    skip = x
+    ## FEED FORWARD
+    x = tf.keras.layers.Dense(dff, activation='relu')(x)
+    x = tf.keras.layers.Dense(dinput)(x)
+    ff_output = tf.keras.layers.Dropout(dropout)(x)
+    x = tf.keras.layers.Add()([skip, ff_output])
+    x = tf.keras.layers.LayerNormalization()(x)
+    return x
+
+# ## TRANSFORMER (subclass model)
+# def tr_model(
+#         hparams,
+#         input_shape,
+#         output_shape,
+#         ):
+#     ## PARAMETERS
+#     # kernel_initializer=hparams.kernel_initializer
+#     # dropout=hparams.dropout
+
+#     num_layers = 4 # repeat encoder
+#     # d_model = 128
+#     d_model = input_shape[1]
+#     print(f'd_model {d_model}')
+#     dff = 512
+#     num_heads = 8
+#     dropout= 0.1
+#     embed_type='cn'
+
+#     if hparams.kernel_regularizer == "none":
+#         kernel_regularizer=None
+#     else:
+#         kernel_regularizer=hparams.kernel_regularizer
+#     if hparams.output_type == 'mc':
+#         out_activation="softmax"
+#     elif hparams.output_type == 'ml':
+#         out_activation="sigmoid"
+#     elif hparams.output_type == 'mh': # multihead = mc & ml
+#         out_activation=["softmax","sigmoid"]
+#     ## MODEL
+#     transformer = Transformer(
+#         num_layers=num_layers,
+#         d_model=d_model,
+#         num_heads=num_heads,
+#         dff=dff,
+#         dropout_rate=dropout,
+#         embed_type=embed_type,
+#         out_activation=out_activation,
+#         output_shape=output_shape,
+#         name='Trans_' + hparams.output_type
+#         )
+
+#     return transformer
 
 def positional_encoding(length, depth):
+    if depth % 2 == 1: depth += 1  # depth must be even
     depth = depth/2
-   
     positions = np.arange(length)[:, np.newaxis]     # (seq, 1)
     depths = np.arange(depth)[np.newaxis, :]/depth   # (1, depth)
-   
     angle_rates = 1 / (10000**depths)         # (1, depth)
     angle_rads = positions * angle_rates      # (pos, depth)
-   
     pos_encoding = np.concatenate(
-       [np.sin(angle_rads), np.cos(angle_rads)],
-       axis=-1) 
-   
+       [np.sin(angle_rads), np.cos(angle_rads)],axis=-1) 
     return tf.cast(pos_encoding, dtype=tf.float32)
 
 class PositionalEmbedding(tf.keras.layers.Layer):
@@ -362,6 +415,8 @@ class PositionalEmbedding(tf.keras.layers.Layer):
             self.embed = tf.keras.layers.LSTM(units=d_model, return_sequences=True)
         elif embed_type == 'fc':
             self.embed = tf.keras.layers.Dense(units=d_model)
+        elif embed_type== 'cn':
+            self.embed = tf.keras.layers.Conv1D(filters=d_model, kernel_size=1, activation="relu")
         else:
             raise Exception("unknown embed_type = {}".format(embed_type))
         self.pos_encoding = positional_encoding(length=2048, depth=d_model)
@@ -533,37 +588,58 @@ class Decoder(tf.keras.layers.Layer):
 
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, 
-                #  input_vocab_size, target_vocab_size, 
                   dropout_rate, embed_type,
                   out_activation, output_shape, name):
         super().__init__(name=name)
         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
                                num_heads=num_heads, dff=dff,
-                            #    vocab_size=input_vocab_size,
                                dropout_rate=dropout_rate, embed_type=embed_type)
-        self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
-                               num_heads=num_heads, dff=dff,
-                            #    vocab_size=target_vocab_size,
-                               dropout_rate=dropout_rate, embed_type=embed_type)
+        self.gap = tf.keras.layers.GlobalAveragePooling1D()
         self.final_layer = tf.keras.layers.Dense(output_shape, activation=out_activation)
 
     def call(self, inputs):
-        # To use a Keras model with `.fit` you must pass all your inputs in the
-        # first argument.
-        context, x  = inputs
-        # print("\n*** ENCODER ***")
-        context = self.encoder(context)  # (batch_size, context_len, d_model)
-        # print("\n*** DECODER ***")
-        x = self.decoder(x, context)  # (batch_size, target_len, d_model)
-
-        # Final linear layer output.
+        x = self.encoder(inputs)  # (batch_size, data_len, data_dim)
+        x = self.gap(x) # global average pooling
         output = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
-        # try:
-        #     del logits._keras_mask # Drop the keras mask, so it doesn't scale the losses/metrics
-        # except AttributeError:
-        #     pass
         return output # Return the final output and the attention weights
     
     def get_config(self):
         base_config = super().get_config()
         return base_config
+
+# class Transformer(tf.keras.Model):
+#     def __init__(self, num_layers, d_model, num_heads, dff, 
+#                 #  input_vocab_size, target_vocab_size, 
+#                   dropout_rate, embed_type,
+#                   out_activation, output_shape, name):
+#         super().__init__(name=name)
+#         self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
+#                                num_heads=num_heads, dff=dff,
+#                             #    vocab_size=input_vocab_size,
+#                                dropout_rate=dropout_rate, embed_type=embed_type)
+#         self.decoder = Decoder(num_layers=num_layers, d_model=d_model,
+#                                num_heads=num_heads, dff=dff,
+#                             #    vocab_size=target_vocab_size,
+#                                dropout_rate=dropout_rate, embed_type=embed_type)
+#         self.final_layer = tf.keras.layers.Dense(output_shape, activation=out_activation)
+
+#     def call(self, inputs):
+#         # To use a Keras model with `.fit` you must pass all your inputs in the
+#         # first argument.
+#         context, x  = inputs
+#         # print("\n*** ENCODER ***")
+#         context = self.encoder(context)  # (batch_size, context_len, d_model)
+#         # print("\n*** DECODER ***")
+#         x = self.decoder(x, context)  # (batch_size, target_len, d_model)
+
+#         # Final linear layer output.
+#         output = self.final_layer(x)  # (batch_size, target_len, target_vocab_size)
+#         # try:
+#         #     del logits._keras_mask # Drop the keras mask, so it doesn't scale the losses/metrics
+#         # except AttributeError:
+#         #     pass
+#         return output # Return the final output and the attention weights
+    
+#     def get_config(self):
+#         base_config = super().get_config()
+#         return base_config

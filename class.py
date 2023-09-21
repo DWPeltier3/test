@@ -61,23 +61,26 @@ if hparams.model_type!='tr':
 
 
 ## TRANSFORMER TROUBLESHOOTING
-# instance=train_dataset.take(1)
-# # for element in instance:
-# #     print(f'train instance {element}')
+print("*** TRANSFORMER DATASET ***")
+instance=train_dataset.take(1)
+# for element in instance:
+#     print(f'train instance {element}')
 # for (x, y), z in instance:
 #   break
-# print(f'x shape {x.shape}')
-# print(f'y shape {y.shape}')
-# print(f'z shape {z.shape}')
-# output=model((x,y))
-# print(f'output shape {output.shape}\n')
-# ## VISUALIZE MODEL
+for (x, y) in instance:
+  break
+print(f'data shape {x.shape}')
+print(f'label_input shape {y.shape}')
+# print(f'label shape {z.shape}')
+output=model(x)
+print(f'output shape {output.shape}\n')
+
+## VISUALIZE MODEL
 # model.summary()
-# # # make GRAPHVIZ plot of model
-# # tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
-# # example=train_dataset.take(3)
-# # for element in example:
-# #     print(f'train element {element}')
+
+# example=train_dataset.take(3)
+# for element in example:
+#     print(f'train element {element}')
 
 
 ## TRAIN MODEL

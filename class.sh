@@ -18,18 +18,18 @@ source activate swarm
 python class_tune.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)LSTMmhSEQ/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)RESmh3/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=20 \
---model_type="lstm" \
+--model_type="res" \
 --output_type="mh" \
---output_length="seq" \
+--output_length="vec" \
 --dropout=0.2 \
 --kernel_initializer="he_normal" \
 --kernel_regularizer="none" \
 --optimizer="adam" \
 --initial_learning_rate=0.0001 \
---callback_list="checkpoint, early_stopping, csv_log" \
+--callback_list="early_stopping, csv_log" \
 --patience=50 \
 --tune_type="h" \
 --tune_epochs=1000 \

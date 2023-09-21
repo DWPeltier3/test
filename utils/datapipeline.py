@@ -168,7 +168,7 @@ def import_data(hparams):
 
 
 
-## CREATE DATASET (to allow multiGPU performance)
+## CREATE DATASET
 def get_dataset(hparams, x_train, y_train, x_test, y_test):
 
     batch_size = hparams.batch_size
@@ -187,11 +187,11 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
         
-        if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
-            print("*** TRANSFORMER DATASET ***")
-            train_dataset=make_batches(train_dataset)
-            val_dataset=make_batches(val_dataset)
-            test_dataset=make_batches(test_dataset)
+        # if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
+        #     print("*** TRANSFORMER DATASET ***")
+            # train_dataset=make_batches(train_dataset)
+            # val_dataset=make_batches(val_dataset)
+            # test_dataset=make_batches(test_dataset)
 
             # example=train_dataset.take(3)
             # for element in example:
@@ -240,4 +240,6 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
 def make_batches(ds):
   return (ds.map(prepare_batch, tf.data.AUTOTUNE))
 def prepare_batch(data, label):
-    return (data, label), label
+    label_inputs=label
+    label_inputs[:,0]=-1 # replace first label with random start token
+    return (data, label_inputs), label
