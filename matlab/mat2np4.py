@@ -109,5 +109,5 @@ x_test = scaler.transform(x_test.reshape(-1, x_test.shape[-1])).reshape(x_test.s
 print('\nx TEST SCALED example (first instance, firt time step):\n',x_test[0,0])
 
 ## SAVE DATASET
-filename='data_10v10_r20000s_4cl_a10_rs.npz' # BvR: #blue v #red; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps
+filename='data_10v10_r20000s_4cl_a10_rs.npz' # BvR: #blue v #red; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start
 np.savez(filename, x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)

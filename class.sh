@@ -2,9 +2,9 @@
 #SBATCH --job-name=swarm-class
 #SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j.txt
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:0
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=16G
 #SBATCH --time=24:00:00
 #SBATCH --partition=beards
 
@@ -15,14 +15,14 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class_tune.py \
+python class_sk.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)RESmh3/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)RESmc/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=20 \
 --model_type="res" \
---output_type="mh" \
+--output_type="mc" \
 --output_length="vec" \
 --dropout=0.2 \
 --kernel_initializer="he_normal" \

@@ -301,18 +301,11 @@ def tr_model(
     length=input_shape[0]
     print(f'length {length}')
     num_enc_layers = 4 # number of encoder layers
-    dinput = 128
-    # dinput = input_shape[1]
+    dinput = 128  # dinput=input_shape[1]
     print(f'dinput {dinput}')
     dff = 512
     num_heads = 4
-
-    kernel_initializer=hparams.kernel_initializer
     dropout=hparams.dropout
-    if hparams.kernel_regularizer == "none":
-        kernel_regularizer=None
-    else:
-        kernel_regularizer=hparams.kernel_regularizer
     if hparams.output_type == 'mc':
         out_activation="softmax"
     elif hparams.output_type == 'ml':
@@ -586,6 +579,7 @@ class Decoder(tf.keras.layers.Layer):
         self.last_attn_scores = self.dec_layers[-1].last_attn_scores
         return x # shape '(batch_size, target_seq_len, d_model)'
 
+# ENCODER ONLY
 class Transformer(tf.keras.Model):
     def __init__(self, num_layers, d_model, num_heads, dff, 
                   dropout_rate, embed_type,
@@ -607,6 +601,7 @@ class Transformer(tf.keras.Model):
         base_config = super().get_config()
         return base_config
 
+# ENCODER & DECODER
 # class Transformer(tf.keras.Model):
 #     def __init__(self, num_layers, d_model, num_heads, dff, 
 #                 #  input_vocab_size, target_vocab_size, 
