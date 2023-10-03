@@ -60,20 +60,20 @@ if hparams.model_type!='tr':
     tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
-## TRANSFORMER TROUBLESHOOTING
-print("*** TRANSFORMER DATASET ***")
-instance=train_dataset.take(1)
-# for element in instance:
-#     print(f'train instance {element}')
-# for (x, y), z in instance:
+# ## TRANSFORMER TROUBLESHOOTING
+# print("*** TRANSFORMER DATASET ***")
+# instance=train_dataset.take(1)
+# # for element in instance:
+# #     print(f'train instance {element}')
+# # for (x, y), z in instance:
+# #   break
+# for (x, y) in instance:
 #   break
-for (x, y) in instance:
-  break
-print(f'data shape {x.shape}')
-print(f'label_input shape {y.shape}')
-# print(f'label shape {z.shape}')
-output=model(x)
-print(f'output shape {output.shape}\n')
+# print(f'data shape {x.shape}')
+# print(f'label_input shape {y.shape}')
+# # print(f'label shape {z.shape}')
+# output=model(x)
+# print(f'output shape {output.shape}\n')
 
 ## VISUALIZE MODEL
 # model.summary()
@@ -98,8 +98,6 @@ if hparams.mode == 'train':
     #     )
 
     # USING DATASET
-    
-
     model_history = model.fit(
         train_dataset,
         validation_data=val_dataset,
@@ -154,9 +152,10 @@ elif hparams.output_type == 'mh':
 # np.set_printoptions(precision=2) #show only 2 decimal places for probability comparision (does not change actual numbers)
 # print('\nprediction & label:\n',np.hstack((pred,y_test))) #probability comparison
 num_results=2 # nunber of examples to view
+class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+attribute_names = ["COMMS", "PRONAV"]
 print(f'\n*** TEST DATA RESULTS COMPARISON ({num_results} per class) ***')
 print('    LABELS\nTrue vs. Predicted')
-class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
 if hparams.output_type != 'mh':
     for c in range(len(cs_idx)): # print each class name and corresponding prediction samples
         print(f"\n{class_names[c]}")
@@ -169,7 +168,7 @@ else: # multihead output
         print('class')
         print(np.concatenate((y_test[0][cs_idx[c]:cs_idx[c]+num_results],
                             y_pred_class[cs_idx[c]:cs_idx[c]+num_results]), axis=-1))
-        print('attribute')
+        print(f'attribute: {attribute_names[0]} {attribute_names[1]}')
         print(np.concatenate((y_test[1][cs_idx[c]:cs_idx[c]+num_results],
                             y_pred_attr[cs_idx[c]:cs_idx[c]+num_results]), axis=-1))
 
@@ -182,7 +181,7 @@ print(eval) #print evaluation metrics numbers
 
 
 ## RESULTS
-print_results(hparams, y_test, y_pred)
+print_results(hparams, y_test, y_pred, class_names, attribute_names)
 
 
 ## PRINT ELAPSE TIME

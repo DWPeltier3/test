@@ -2,7 +2,7 @@
 #SBATCH --job-name=swarm-class
 #SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j.txt
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:0
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00
@@ -15,21 +15,21 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class_sk.py \
+python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)RESmc/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_LSTMmhSEQwFULL/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=20 \
---model_type="res" \
---output_type="mc" \
---output_length="vec" \
---dropout=0.2 \
+--window=-1 \
+--model_type="lstm" \
+--output_type="mh" \
+--output_length="seq" \
+--dropout=0. \
 --kernel_initializer="he_normal" \
 --kernel_regularizer="none" \
 --optimizer="adam" \
 --initial_learning_rate=0.0001 \
---callback_list="early_stopping, csv_log" \
+--callback_list="checkpoint, early_stopping, csv_log" \
 --patience=50 \
 --tune_type="h" \
 --tune_epochs=1000 \

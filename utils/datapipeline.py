@@ -25,6 +25,8 @@ def import_data(hparams):
     if  model_type == 'fc':
         # flatten timeseries data into 1 column per run for fully connected model
         num_inputs=time_steps*num_features
+        # x_train = x_train.reshape(-1, num_inputs)  # Reshape to (batch, time*feature)
+        # x_test = x_test.reshape(-1, num_inputs)
         x_train=np.reshape(x_train,(len(x_train),num_inputs))
         x_test=np.reshape(x_test,(len(x_test),num_inputs))
     
