@@ -16,7 +16,7 @@ from utils.trainplot import train_plot
 start = timer() # start timer to calculate run time
 GPUs=print_resources() # computation resources available
 hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throughout script below)
-params.save_hparams(hparams) #create model folder and save hyperparameters list .txt
+params.save_hparams(hparams) # create model folder and save hyperparameters list .txt
 
 
 ## IMPORT DATA
@@ -53,6 +53,7 @@ if hparams.mode == 'train':
 elif hparams.mode == 'predict':
     model = tf.keras.models.load_model(hparams.trained_model)
 
+## SUBCLASS TRANSFORMER ONLY
 if hparams.model_type!='tr':
     ## VISUALIZE MODEL
     model.summary()
@@ -60,23 +61,23 @@ if hparams.model_type!='tr':
     tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
-# ## TRANSFORMER TROUBLESHOOTING
-# print("*** TRANSFORMER DATASET ***")
-# instance=train_dataset.take(1)
-# # for element in instance:
-# #     print(f'train instance {element}')
-# # for (x, y), z in instance:
-# #   break
-# for (x, y) in instance:
+## TRANSFORMER TROUBLESHOOTING
+print("*** TRANSFORMER DATASET ***")
+instance=train_dataset.take(1)
+# for element in instance:
+#     print(f'train instance {element}')
+# for (x, y), z in instance:
 #   break
-# print(f'data shape {x.shape}')
-# print(f'label_input shape {y.shape}')
-# # print(f'label shape {z.shape}')
-# output=model(x)
-# print(f'output shape {output.shape}\n')
+for (x, y) in instance:
+  break
+print(f'model input shape (data shape) {x.shape}')
+print(f'label_input shape {y.shape}')
+# print(f'label shape {z.shape}')
+output=model(x)
+print(f'model output shape {output.shape}\n')
 
 ## VISUALIZE MODEL
-# model.summary()
+model.summary()
 
 # example=train_dataset.take(3)
 # for element in example:
@@ -115,11 +116,12 @@ if hparams.mode == 'train':
     ## TRAINING CURVE: ACCURACY/LOSS vs. EPOCH
     train_plot(hparams, model_history)
 
-if hparams.model_type=='tr':
-    ## VISUALIZE MODEL
-    model.summary()
-    # make GRAPHVIZ plot of model
-    tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
+# ## SUBCLASS TRANSFORMER ONLY
+# if hparams.model_type=='tr':
+#     ## VISUALIZE MODEL
+#     model.summary()
+#     # make GRAPHVIZ plot of model
+#     tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
 ## TEST DATA PREDICTIONS

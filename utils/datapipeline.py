@@ -189,6 +189,7 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
         
+        ## SUBCLASS TRANSFORMER ONLY
         # if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
         #     print("*** TRANSFORMER DATASET ***")
             # train_dataset=make_batches(train_dataset)

@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import math
 import pickle
@@ -35,18 +36,38 @@ train_runs=x_train.shape[0]
 test_runs=x_test.shape[0]
 time_steps=x_train.shape[1]
 num_features=x_train.shape[2]
-# num_agents=num_features//4
+num_agents=num_features//4
 print('train runs:',train_runs)
 print('test runs:',test_runs)
 print('time steps:',time_steps)
 print('num features:',num_features)
-# print('num agents:',num_agents)
+print('num agents:',num_agents)
 
 
-# Reshape data for sklearn
+## VISUALIZE INPUT DATA (TIME SERIES PLOTS)
+# Select a random sample
+sample_idx = np.random.randint(0, x_train.shape[0])
+# Get data for that sample
+sample_data = x_train[sample_idx]
+# Plot positions and velocities over time for each agent
+num_subplot=math.ceil(math.sqrt(num_agents))
+plt.figure(figsize=(20,20))
+for agent_idx in range(num_agents):
+    plt.subplot(num_subplot,num_subplot, agent_idx + 1)
+    plt.plot(sample_data[:, agent_idx], label='Px')
+    plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
+    plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
+    plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+    plt.legend()
+    plt.title(f'Agent {agent_idx + 1}')
+plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
+
+
+## Reshape data for sklearn
+# x_train_original=x_train # used to visualize input data
 x_train = x_train.reshape(train_runs, -1)  # Reshape to (batch, time*feature)
 x_test = x_test.reshape(test_runs, -1)  # Reshape to (batch, time*feature)
-if hparams.output_type == 'mc': # col vector to [batch,] format
+if hparams.output_type == 'mc': # col vector to [batch,] format; NOT for multilabel
     y_train=y_train.ravel()
     y_test=y_test.ravel()
 print('\n*** DATA for SK ***')
@@ -70,7 +91,7 @@ if hparams.output_type == 'mc':
     reshaped_importances = feature_importances.reshape((time_steps, num_features))
     # Caluclate size of "fit"/"trained" model
     p = pickle.dumps(clf)
-    print(f'clf size: {sys.getsizeof(p)} bytes')
+    print(f'Multi-CLASS model size: {sys.getsizeof(p)} bytes')
 # Random Forest MULTILABEL classifier
 if hparams.output_type == 'ml':
     # Create and "train" model 
@@ -84,7 +105,7 @@ if hparams.output_type == 'ml':
     reshaped_importances = feature_importances.reshape((time_steps, num_features))
     # Caluclate size of "fit"/"trained" model
     p = pickle.dumps(multi_target_forest)
-    print(f'multi_target_forest size: {sys.getsizeof(p)} bytes')
+    print(f'Multi-LABEL model size: {sys.getsizeof(p)} bytes')
 # Evaluate the classifier
 print('Accuracy:', accuracy_score(y_test, y_pred))
 ## PRINT ELAPSE TIME

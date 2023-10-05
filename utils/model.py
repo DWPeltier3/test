@@ -291,7 +291,7 @@ def lstm_model(
     return keras.Model(inputs=inputs, outputs=outputs, name='LSTM_' + hparams.output_type)
 
 
-## TRANSFORMER (functional model)
+## TRANSFORMER (functional model; ENCODER ONLY)
 def tr_model(
         hparams,
         input_shape,
@@ -299,10 +299,8 @@ def tr_model(
         ):
     ## PARAMETERS
     length=input_shape[0]
-    print(f'length {length}')
     num_enc_layers = 4 # number of encoder layers
     dinput = 128  # dinput=input_shape[1]
-    print(f'dinput {dinput}')
     dff = 512
     num_heads = 4
     dropout=hparams.dropout
@@ -312,6 +310,11 @@ def tr_model(
         out_activation="sigmoid"
     elif hparams.output_type == 'mh': # multihead = mc & ml
         out_activation=["softmax","sigmoid"]
+    print(f'input length {length}')
+    print(f'# encode layers {num_enc_layers}')
+    print(f'D_input {dinput}')
+    print(f'D_ff {dff}')
+    print(f'# heads {num_heads}')
     ## MODEL
     inputs = keras.Input(shape=input_shape)
     x = inputs
