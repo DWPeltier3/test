@@ -15,16 +15,16 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class_tune.py \
+python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
 --model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCNmhFULL/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=-1 \
---model_type="fcn" \
+--model_type="cn" \
 --output_type="mh" \
 --output_length="vec" \
---dropout=0. \
+--dropout=0.4 \
 --kernel_initializer="he_normal" \
 --kernel_regularizer="none" \
 --optimizer="adam" \

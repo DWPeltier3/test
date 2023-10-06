@@ -126,11 +126,11 @@ elif tuner=="h": # hyperband search
         max_epochs=hparams.tune_epochs,
         distribution_strategy=tf.distribute.MirroredStrategy(),
         ## USE FOR NEW TUNE
-        overwrite=True,
-        directory=hparams.model_dir,
+        # overwrite=True,
+        # directory=hparams.model_dir,
         ## USE TO CONTINUE PREVIOUS TUNE
-        # overwrite=False,
-        # directory="/home/donald.peltier/swarm/model/swarm_class09-20_15-06-37RESmh",
+        overwrite=False,
+        directory="/home/donald.peltier/swarm/model/swarm_class10-03_22-13-42_FCNmhFULL_ERROR",
         project_name="tune")
 
 print('\n*** SEARCH SPACE SUMMARY ***')

@@ -21,6 +21,17 @@ def get_model(hparams, input_shape, output_shape):
     
     return model
 
+def mh_version1(output_shape, out_activation, x):
+    output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
+    output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
+    outputs=[output_class, output_attr]
+    return outputs
+def mh_version2(output_shape, out_activation, x):
+    output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
+    concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
+    output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
+    outputs=[output_class, output_attr]
+    return outputs
 
 ## FULLY CONNECTED (MULTILAYER PERCEPTRON)
 def fc_model(
@@ -107,10 +118,11 @@ def cnn_model(
         # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(drop)
         # outputs=[output_class, output_attr]
         ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
-        concat=keras.layers.Concatenate()([drop,output_attr]) #use attribute output to try and improve class output
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
+        # concat=keras.layers.Concatenate()([drop,output_attr]) #use attribute output to try and improve class output
+        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
+        # outputs=[output_class, output_attr]
+        outputs=mh_version2(output_shape, out_activation, drop)
 
     return keras.Model(inputs=inputs, outputs=outputs, name='CNN_' + hparams.output_type)
 

@@ -1,5 +1,9 @@
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from matplotlib.patches import Patch
+import math
 
 ## IMPORT DATA
 def import_data(hparams):
@@ -40,8 +44,67 @@ def import_data(hparams):
     print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,:num_features])
     print('ytrain sample (first instance)',y_train[0])
 
-    ## DETERMINE NUM DATA CLASSES AND NUM RUNS IN TEST SET (HELPS SHOW PORTION OF TEST RESULTS AT END)
-    num_classes=len(np.unique(y_test))
+
+    ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
+    # Select sample
+    sample_idx = np.random.randint(0, x_train.shape[0]) # random sample
+    sample_idx = 0 # first sample
+    sample_data = x_train[sample_idx] # Get data for that sample
+    # Plot positions and velocities over time for each agent
+    num_agents=num_features//4
+    # print('num agents:',num_agents)
+    num_subplot=math.ceil(math.sqrt(num_agents))
+    plt.figure(figsize=(20,20))
+    for agent_idx in range(num_agents):
+        plt.subplot(num_subplot,num_subplot, agent_idx + 1)
+        plt.plot(sample_data[:, agent_idx], label='Px')
+        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
+        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
+        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+        plt.legend()
+        plt.title(f'Agent {agent_idx + 1}')
+    plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
+
+    ##PCA
+    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+    x_pca = x_train.reshape(-1, 40)  # Reshape data to be 2D: (num_samples * num_timesteps, 40)
+    y_pca=y_train.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
+    # x_test = x_test.reshape(-1, 40)
+    # y_test=y_test.ravel()
+    print('\n*** DATA for PCA ***')
+    print('xtrain shape:',x_train.shape)
+    print('ytrain shape:',y_train.shape)
+    # print('xtest shape:',x_test.shape)
+    # print('ytest shape:',y_test.shape)
+
+    # Perform PCA
+    pca = PCA(n_components=3)
+    pca_result = pca.fit_transform(x_pca)
+    # Normalize y_train to map to the colormap
+    norm = plt.Normalize(y_pca.min(), y_pca.max())
+    # Create a custom legend
+    unique_labels = np.unique(y_pca)
+    handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
+    
+    # 2D Scatter plot of the first two principal components
+    plt.figure(figsize=(10, 5))
+    scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    plt.legend(handles=handles, title="Classes")
+    plt.title('2D Principle Component Analysis of Input Data')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.savefig(hparams.model_dir + "PCA_2D.eps")
+    # 3D Scatter plot of the first three principal components
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    # sc = ax.scatter(pca_result[:, 0], pca_result[:, 2], pca_result[:, 1], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    plt.legend(handles=handles, title="Classes")
+    ax.set_title('3D Principle Component Analysis of Input Data')
+    plt.savefig(hparams.model_dir + "PCA_3D.eps")
+
+    ## TEST SET: DETERMINE NUM DATA CLASSES AND NUM RUNS (HELPS SHOW PORTION OF TEST RESULTS AT END)
+    num_classes=len(np.unique(y_test)) # before restructuring labels (as required, for multilabel)
     num_runs=y_test.shape[0]
     rpc=num_runs//num_classes # runs per class
     cs_idx=[] # class start index
@@ -189,7 +252,7 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
         
-        ## SUBCLASS TRANSFORMER ONLY
+        ## SUBCLASS TRANSFORMER (Encoder/Decoder) ONLY
         # if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
         #     print("*** TRANSFORMER DATASET ***")
             # train_dataset=make_batches(train_dataset)
@@ -240,6 +303,7 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     
     return (train_dataset, val_dataset, test_dataset)
 
+#SUBCLASS TRANS(E/D) needs dataset in form (input,label),label
 def make_batches(ds):
   return (ds.map(prepare_batch, tf.data.AUTOTUNE))
 def prepare_batch(data, label):

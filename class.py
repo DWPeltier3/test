@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from timeit import default_timer as timer
+import matplotlib.pyplot as plt
 
 from utils.elapse import elapse_time
 from utils.resources import print_resources
@@ -161,7 +162,6 @@ print('    LABELS\nTrue vs. Predicted')
 if hparams.output_type != 'mh':
     for c in range(len(cs_idx)): # print each class name and corresponding prediction samples
         print(f"\n{class_names[c]}")
-        # print(f"first true label: \n{y_test[cs_idx[c]]}")
         print(np.concatenate((y_test[cs_idx[c]:cs_idx[c]+num_results],
                             y_pred[cs_idx[c]:cs_idx[c]+num_results]), axis=-1))
 else: # multihead output
@@ -184,6 +184,61 @@ print(eval) #print evaluation metrics numbers
 
 ## RESULTS
 print_results(hparams, y_test, y_pred, class_names, attribute_names)
+
+
+## CAM VISUAL
+def get_cam(model, sample, last_conv_layer_name):
+    # This function requires the model, input sample, and the name of the last convolutional layer
+    
+    # Get the model of the intermediate layers
+    cam_model = tf.keras.models.Model(
+        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output[0]]
+        )
+    # Get the outputs and predictions
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = cam_model(np.array([sample]))
+        predicted_class = tf.argmax(predictions[0]) # predicted class
+        predicted_class_val = predictions[:, predicted_class] # predicted class probability
+    # Get the gradients and pooled gradients
+    grads = tape.gradient(predicted_class_val, conv_outputs) # gradients between predicted class probability WRT CONV outputs maps
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1)) # average ("pool") feature gradients (gives single importance value for each map)
+    # Multiply pooled gradients (importance) with the conv layer output, then average across all feature maps, to get the 2D heatmap
+    # Heatmap highlights areas that most influence models prediction
+    heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
+    # Normalize the heatmap (between 0 and largest feature value)
+    heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
+    heatmap = heatmap * np.max(sample)
+    return heatmap[0]
+
+# Select one training sample to analyze
+sample = x_train[20]
+
+# Get the class activation map
+last_cov_layer=-5 if hparams.output_type == 'mh' else -3 # multihead v2 has 2 extra layers at end
+heatmap = get_cam(model, sample, model.layers[last_cov_layer].name)
+
+## Visualize Class Activation Map
+# ALL FEATURES: Plot the heatmap values along with the time series data for each feature
+plt.figure(figsize=(10, 8))
+plt.plot(sample, c='black')
+plt.plot(heatmap, label='CAM', c='red', lw=5, linestyle='dashed')
+plt.legend()
+plt.title(f'Class Activation Map vs. All Input Features')
+plt.savefig(hparams.model_dir + "CAM_all.eps")
+
+# ONE AGENT: Plot the heatmap values along with the time series features for one agent
+num_features=x_train.shape[2]
+num_agents=num_features//4
+plt.figure(figsize=(10, 8))
+agent_idx=1
+plt.plot(sample[:, agent_idx], label='Px')
+plt.plot(sample[:, agent_idx+num_agents], label='Py')
+plt.plot(sample[:, agent_idx+2*num_agents], label='Vx')
+plt.plot(sample[:, agent_idx+3*num_agents], label='Vy')
+plt.plot(heatmap, label='CAM', c='red', lw=5, linestyle='dashed')
+plt.legend()
+plt.title(f"Class Activation Map vs. One Agent's Input Features")
+plt.savefig(hparams.model_dir + "CAM_one.eps")
 
 
 ## PRINT ELAPSE TIME
