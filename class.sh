@@ -18,10 +18,10 @@ source activate swarm
 python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCNmhFULL/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=-1 \
---model_type="cn" \
+--window=20 \
+--model_type="fc" \
 --output_type="mh" \
 --output_length="vec" \
 --dropout=0.4 \

@@ -25,15 +25,6 @@ def import_data(hparams):
     time_steps=x_train.shape[1]
     num_features=x_train.shape[2]
     
-    ## RESHAPE DATA AS REQUIRED
-    if  model_type == 'fc':
-        # flatten timeseries data into 1 column per run for fully connected model
-        num_inputs=time_steps*num_features
-        # x_train = x_train.reshape(-1, num_inputs)  # Reshape to (batch, time*feature)
-        # x_test = x_test.reshape(-1, num_inputs)
-        x_train=np.reshape(x_train,(len(x_train),num_inputs))
-        x_test=np.reshape(x_test,(len(x_test),num_inputs))
-    
     ## VISUALIZE DATA
     print('\n*** DATA ***')
     print('xtrain shape:',x_train.shape)
@@ -44,15 +35,26 @@ def import_data(hparams):
     print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,:num_features])
     print('ytrain sample (first instance)',y_train[0])
 
+    ## REDUCE OBSERVATION WINDOW, IF REQUIRED
+    if window==-1 or window>time_steps: # if window = -1 (use entire window) or invalid window (too large>min_time): uses entire observation window (min_time) for all runs
+        window=time_steps
+    input_length=window
+    x_train=x_train[:,:input_length]
+    x_test=x_test[:,:input_length]
+    print('\n*** REDUCED OBSERVATION WINDOW ***')
+    print('time steps available:',time_steps)
+    print('window used:',window)
+    print('input length:',input_length)
+    print('xtrain shape:',x_train.shape)
+    print('xtest shape:',x_test.shape)
 
     ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
     # Select sample
-    sample_idx = np.random.randint(0, x_train.shape[0]) # random sample
+    # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
     sample_idx = 0 # first sample
     sample_data = x_train[sample_idx] # Get data for that sample
     # Plot positions and velocities over time for each agent
     num_agents=num_features//4
-    # print('num agents:',num_agents)
     num_subplot=math.ceil(math.sqrt(num_agents))
     plt.figure(figsize=(20,20))
     for agent_idx in range(num_agents):
@@ -61,47 +63,49 @@ def import_data(hparams):
         plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
         plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
         plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+        plt.xlabel('Time Step')
+        plt.ylabel('Feature Value [normalized]')
         plt.legend()
         plt.title(f'Agent {agent_idx + 1}')
     plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
 
-    ##PCA
+    ## PCA
     class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    x_pca = x_train.reshape(-1, 40)  # Reshape data to be 2D: (num_samples * num_timesteps, 40)
-    y_pca=y_train.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
-    # x_test = x_test.reshape(-1, 40)
-    # y_test=y_test.ravel()
+    x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
+    # must have label for every timestep (same as "sequence output")
+    train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
+    num_classes=len(np.unique(y_train))
+    for c in range(num_classes):
+        train_temp[y_train[:,0]==c]=[c]
+    y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
     print('\n*** DATA for PCA ***')
-    print('xtrain shape:',x_train.shape)
-    print('ytrain shape:',y_train.shape)
-    # print('xtest shape:',x_test.shape)
-    # print('ytest shape:',y_test.shape)
-
+    print('x_pca shape:',x_pca.shape)
+    print('y_pca shape:',y_pca.shape)
+    print('train_temp shape:',train_temp.shape)
+    print('train_temp.ravel shape:',train_temp.ravel().shape)
     # Perform PCA
     pca = PCA(n_components=3)
     pca_result = pca.fit_transform(x_pca)
-    # Normalize y_train to map to the colormap
+    # Normalize labels to map to the colormap
     norm = plt.Normalize(y_pca.min(), y_pca.max())
     # Create a custom legend
     unique_labels = np.unique(y_pca)
     handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
-    
     # 2D Scatter plot of the first two principal components
     plt.figure(figsize=(10, 5))
-    scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
     plt.legend(handles=handles, title="Classes")
     plt.title('2D Principle Component Analysis of Input Data')
     plt.xlabel('Principal Component 1')
     plt.ylabel('Principal Component 2')
-    plt.savefig(hparams.model_dir + "PCA_2D.eps")
+    plt.savefig(hparams.model_dir + "PCA_2D.png")
     # 3D Scatter plot of the first three principal components
     fig = plt.figure(figsize=(10, 7))
     ax = fig.add_subplot(111, projection='3d')
-    sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
-    # sc = ax.scatter(pca_result[:, 0], pca_result[:, 2], pca_result[:, 1], c=y_train, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
     plt.legend(handles=handles, title="Classes")
     ax.set_title('3D Principle Component Analysis of Input Data')
-    plt.savefig(hparams.model_dir + "PCA_3D.eps")
+    plt.savefig(hparams.model_dir + "PCA_3D.png")
 
     ## TEST SET: DETERMINE NUM DATA CLASSES AND NUM RUNS (HELPS SHOW PORTION OF TEST RESULTS AT END)
     num_classes=len(np.unique(y_test)) # before restructuring labels (as required, for multilabel)
@@ -114,22 +118,6 @@ def import_data(hparams):
     print('num test classes:',num_classes)
     print('num test runs:',num_runs)
     print(f'test set class start indices: {cs_idx}')
-
-    ## REDUCE OBSERVATION WINDOW, IF REQUIRED
-    if window==-1 or window>time_steps: # if window = -1 (use entire window) or invalid window (too large>min_time): uses entire observation window (min_time) for all runs
-        window=time_steps
-    if model_type == 'fc':
-        input_length=window*num_features
-    else:
-        input_length=window
-    x_train=x_train[:,:input_length]
-    x_test=x_test[:,:input_length]
-    print('\n*** REDUCED OBSERVATION WINDOW ***')
-    print('time steps available:',time_steps)
-    print('window used:',window)
-    print('input length:',input_length)
-    print('xtrain shape:',x_train.shape)
-    print('xtest shape:',x_test.shape)
 
     ## IF MULTILABEL (and output length=vector), RESTRUCTURE LABELS
     # check for errors in requested output_length
@@ -172,10 +160,8 @@ def import_data(hparams):
     ## IF SEQUENCE OUTPUT, RESTRUCTURE LABELS
     if output_length == 'seq':
         if output_type=='mc' or output_type=='mh': # multiclass
-            train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8) #try remove (,1) from zeros size tuple
+            train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
             test_temp=np.zeros((y_test.shape[0], window), dtype=np.int8)
-            # print('train temp shape:',train_temp.shape)
-            # print('test temp shape:',test_temp.shape)
             for c in range(num_classes):
                 train_temp[y_train[:,0]==c]=[c]
                 test_temp[y_test[:,0]==c]=[c]
@@ -186,8 +172,6 @@ def import_data(hparams):
             num_attributes=2
             train_temp=np.zeros((y_train.shape[0], window, num_attributes), dtype=np.int8)
             test_temp=np.zeros((y_test.shape[0], window, num_attributes), dtype=np.int8)
-            # print('train temp shape:',train_temp.shape)
-            # print('test temp shape:',test_temp.shape)
             train_temp[y_train[:,0]==0]=[0,0] # Greedy
             train_temp[y_train[:,0]==1]=[0,1] # Greedy+
             train_temp[y_train[:,0]==2]=[1,0] # Auction
@@ -214,6 +198,15 @@ def import_data(hparams):
             print('\n*** MULTIHEAD COMBINED LABELS ***')
             print(f'ytrain shape: class {y_train[0].shape} and attr {y_train[1].shape}')
             print(f'ytest shape: class {y_test[0].shape} and attr {y_test[1].shape}')
+
+    ## RESHAPE DATA IF "FULLY CONNECTED" NN
+    if  model_type == 'fc':
+        # flatten timeseries data into 1 column per run for fully connected model
+        x_train=x_train.reshape(x_train.shape[0],-1) # Reshape to (batch, time*feature)
+        x_test=x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature)
+        print('\n*** FULLY CONNECTED DATA ***')
+        print('xtrain shape:',x_train.shape)
+        print('xtest shape:',x_test.shape)
 
     ## SIZE MODEL INPUTS AND OUTPUTS
     # inputs
