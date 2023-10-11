@@ -12,7 +12,7 @@ function [states] = Greedy_D_PV(attacker, defender, defender_v, do_plot, kill_pr
     plot_axes_limit = attacker_start_distance*1.25; % Make sure we can see attackers when they start
 
     %% Defender Init
-    N_att=defender; %# defenders
+    N_att=defender; % # defenders
     if rand_start
         Att_pos=def_spread*(rand(N_att,2)-0.5)+defender_base_pos; % defender initial position
     else
@@ -27,7 +27,7 @@ function [states] = Greedy_D_PV(attacker, defender, defender_v, do_plot, kill_pr
     Att_a=defender_v*ramp_time; % defender max acceleration increase each time step
 
     %% Attacker Init
-    N_def=attacker; %# attackers
+    N_def=attacker; % # attackers
     if rand_start
         attacker_start_bearing = 2*pi*rand; %attacker swarm: random start bearing between 0 and 2*pi
         attacker_start_pos = attacker_start_distance*[cos(attacker_start_bearing), sin(attacker_start_bearing)]; %Attacker swarm center: PxPy along bearing
@@ -109,9 +109,10 @@ function [states] = Greedy_D_PV(attacker, defender, defender_v, do_plot, kill_pr
 
         %% Plot
         if do_plot
-            plot(Def_pos(:,1),Def_pos(:,2),'r.','MarkerSize',16)
+            % switched colors for ONR brief
+            plot(Def_pos(:,1),Def_pos(:,2),'b.','MarkerSize',16)
             hold on;
-            plot(Att_pos(:,1),Att_pos(:,2),'b.','MarkerSize',16)
+            plot(Att_pos(:,1),Att_pos(:,2),'r.','MarkerSize',16)
             if rand_start
                 xlim(plot_axes_limit*[-1 1])
                 ylim(plot_axes_limit*[-1 1])

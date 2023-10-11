@@ -3,16 +3,14 @@ import tensorflow as tf
 from timeit import default_timer as timer
 import matplotlib.pyplot as plt
 
+import utils.params as params
 from utils.elapse import elapse_time
 from utils.resources import print_resources
-import utils.params as params
 from utils.datapipeline import import_data, get_dataset
 from utils.model import get_model
 from utils.compiler import get_loss, get_optimizer, get_metric
 from utils.callback import callback_list
-from utils.trainplot import train_plot
-from utils.results import print_cm
-from utils.results import print_cam
+from utils.results import print_train_plot, print_cm, print_cam
 
 
 ## INTRO
@@ -117,7 +115,7 @@ if hparams.mode == 'train':
         ## SAVE ENTIRE MODEL AFTER TRAINING
         model.save(filepath=hparams.model_dir+"model.keras", save_format="keras") #saves entire model: weights and layout
     ## TRAINING CURVE: ACCURACY/LOSS vs. EPOCH
-    train_plot(hparams, model_history)
+    print_train_plot(hparams, model_history)
 
 # ## SUBCLASS TRANSFORMER ONLY
 # if hparams.model_type=='tr':

@@ -56,7 +56,7 @@ print('data shape:',data.shape)
 
 ## CREATE LABELS
 # TODO: make this "not hard coded"; # labels = # of matlab imports
-label = np.vstack((np.zeros((run1,1),dtype=int), np.ones((run2,1),dtype=int), 2*np.ones((run3,1),dtype=int), 3*np.ones((run3,1),dtype=int))) #np.ones default type is float64
+label = np.vstack((np.zeros((run1,1),dtype=int), np.ones((run2,1),dtype=int), 2*np.ones((run3,1),dtype=int), 3*np.ones((run4,1),dtype=int))) #np.ones default type is float64
 print('label shape', label.shape)
 print('label sample', label[c1si:c1si+5],'\n', label[c2si:c2si+5],'\n', label[c3si:c3si+5],'\n', label[c4si:c4si+5])
 
@@ -109,5 +109,5 @@ x_test = scaler.transform(x_test.reshape(-1, x_test.shape[-1])).reshape(x_test.s
 print('\nx TEST SCALED example (first instance, firt time step):\n',x_test[0,0])
 
 ## SAVE DATASET
-filename='data_10v10_r20000s_4cl_a10_rs.npz' # BvR: #blue v #red; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start
+filename='data_10v10_r4800s_4cl_a10.npz' # BvR: #blue v #red; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start
 np.savez(filename, x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)

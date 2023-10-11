@@ -46,7 +46,7 @@ function [states] = AuctionPro_D_PV(N_attacker,N_defender,Defender_v_max,do_plot
 
     %% Targeting Init
     Att_alive=ones(N_attacker,1);
-    Def_Velocity_vect=zeros(N_attacker,2); % used for ProNav
+    Def_Velocity_vect=zeros(N_defender,2); % used for ProNav; should it be N_defender????
     Dist=zeros(N_defender,N_attacker);
     Disto=zeros(1,N_attacker);
     target_num=nan(N_defender,1); %col vector of NaN x Ndef
@@ -98,7 +98,7 @@ function [states] = AuctionPro_D_PV(N_attacker,N_defender,Defender_v_max,do_plot
         iteri=1;
         Dist_check=Dist;
         Disto_check=Disto; %row vector
-        target_num=nan(N_defender,1);
+        target_num=nan(N_defender,1); %col vector of NaN x Ndef
         while iteri<=N_defender && iteri+totalkilled<=N_attacker
             maxMatrix=max(Disto_check(:)); %scalar (max attacker distance from origin)
             [~,iter4] = find(Disto_check==maxMatrix); %index of attacker furthest from origin
@@ -127,7 +127,7 @@ function [states] = AuctionPro_D_PV(N_attacker,N_defender,Defender_v_max,do_plot
             iteri=iteri+1;
         end
         
-        %pair multiple defenders to one attacker once attackers<def
+        %pair multiple defenders to one attacker once attackers alive<def
         iteri=1;
         while iteri<=N_defender
             if target_num(iteri,1)==0 || isnan(target_num(iteri,1))
@@ -169,9 +169,9 @@ function [states] = AuctionPro_D_PV(N_attacker,N_defender,Defender_v_max,do_plot
 
         %% Plot
         if do_plot
-            plot(Defender_pos(:,1),Defender_pos(:,2),'b.','MarkerSize',16)
+            plot(Defender_pos(:,1),Defender_pos(:,2),'r.','MarkerSize',16)
             hold on;
-            plot(Attacker_pos(:,1),Attacker_pos(:,2),'r.','MarkerSize',16)
+            plot(Attacker_pos(:,1),Attacker_pos(:,2),'b.','MarkerSize',16)
             if rand_start
                 xlim(plot_axes_limit*[-1 1])
                 ylim(plot_axes_limit*[-1 1])

@@ -48,64 +48,64 @@ def import_data(hparams):
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
 
-    ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
-    # Select sample
-    # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
-    sample_idx = 0 # first sample
-    sample_data = x_train[sample_idx] # Get data for that sample
-    # Plot positions and velocities over time for each agent
-    num_agents=num_features//4
-    num_subplot=math.ceil(math.sqrt(num_agents))
-    plt.figure(figsize=(20,20))
-    for agent_idx in range(num_agents):
-        plt.subplot(num_subplot,num_subplot, agent_idx + 1)
-        plt.plot(sample_data[:, agent_idx], label='Px')
-        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
-        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
-        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
-        plt.xlabel('Time Step')
-        plt.ylabel('Feature Value [normalized]')
-        plt.legend()
-        plt.title(f'Agent {agent_idx + 1}')
-    plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
+    # ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
+    # # Select sample
+    # # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
+    # sample_idx = 0 # first sample
+    # sample_data = x_train[sample_idx] # Get data for that sample
+    # # Plot positions and velocities over time for each agent
+    # num_agents=num_features//4
+    # num_subplot=math.ceil(math.sqrt(num_agents))
+    # plt.figure(figsize=(20,20))
+    # for agent_idx in range(num_agents):
+    #     plt.subplot(num_subplot,num_subplot, agent_idx + 1)
+    #     plt.plot(sample_data[:, agent_idx], label='Px')
+    #     plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
+    #     plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
+    #     plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+    #     plt.xlabel('Time Step')
+    #     plt.ylabel('Feature Value [normalized]')
+    #     plt.legend()
+    #     plt.title(f'Agent {agent_idx + 1}')
+    # plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
 
-    ## PCA
-    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
-    # must have label for every timestep (same as "sequence output")
-    train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
-    num_classes=len(np.unique(y_train))
-    for c in range(num_classes):
-        train_temp[y_train[:,0]==c]=[c]
-    y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
-    print('\n*** DATA for PCA ***')
-    print('x_pca shape:',x_pca.shape)
-    print('y_pca shape:',y_pca.shape)
-    print('train_temp shape:',train_temp.shape)
-    print('train_temp.ravel shape:',train_temp.ravel().shape)
-    # Perform PCA
-    pca = PCA(n_components=3)
-    pca_result = pca.fit_transform(x_pca)
-    # Normalize labels to map to the colormap
-    norm = plt.Normalize(y_pca.min(), y_pca.max())
-    # Create a custom legend
-    unique_labels = np.unique(y_pca)
-    handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
-    # 2D Scatter plot of the first two principal components
-    plt.figure(figsize=(10, 5))
-    scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
-    plt.legend(handles=handles, title="Classes")
-    plt.title('2D Principle Component Analysis of Input Data')
-    plt.xlabel('Principal Component 1')
-    plt.ylabel('Principal Component 2')
-    plt.savefig(hparams.model_dir + "PCA_2D.png")
-    # 3D Scatter plot of the first three principal components
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
-    plt.legend(handles=handles, title="Classes")
-    ax.set_title('3D Principle Component Analysis of Input Data')
-    plt.savefig(hparams.model_dir + "PCA_3D.png")
+    # ## PCA
+    # class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+    # x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
+    # # must have label for every timestep (same as "sequence output")
+    # train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
+    # num_classes=len(np.unique(y_train))
+    # for c in range(num_classes):
+    #     train_temp[y_train[:,0]==c]=[c]
+    # y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
+    # print('\n*** DATA for PCA ***')
+    # print('x_pca shape:',x_pca.shape)
+    # print('y_pca shape:',y_pca.shape)
+    # print('train_temp shape:',train_temp.shape)
+    # print('train_temp.ravel shape:',train_temp.ravel().shape)
+    # # Perform PCA
+    # pca = PCA(n_components=3)
+    # pca_result = pca.fit_transform(x_pca)
+    # # Normalize labels to map to the colormap
+    # norm = plt.Normalize(y_pca.min(), y_pca.max())
+    # # Create a custom legend
+    # unique_labels = np.unique(y_pca)
+    # handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
+    # # 2D Scatter plot of the first two principal components
+    # plt.figure(figsize=(10, 5))
+    # scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    # plt.legend(handles=handles, title="Classes")
+    # plt.title('2D Principle Component Analysis of Input Data')
+    # plt.xlabel('Principal Component 1')
+    # plt.ylabel('Principal Component 2')
+    # plt.savefig(hparams.model_dir + "PCA_2D.png")
+    # # 3D Scatter plot of the first three principal components
+    # fig = plt.figure(figsize=(10, 7))
+    # ax = fig.add_subplot(111, projection='3d')
+    # sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    # plt.legend(handles=handles, title="Classes")
+    # ax.set_title('3D Principle Component Analysis of Input Data')
+    # plt.savefig(hparams.model_dir + "PCA_3D.png")
 
     ## TEST SET: DETERMINE NUM DATA CLASSES AND NUM RUNS (HELPS SHOW PORTION OF TEST RESULTS AT END)
     num_classes=len(np.unique(y_test)) # before restructuring labels (as required, for multilabel)

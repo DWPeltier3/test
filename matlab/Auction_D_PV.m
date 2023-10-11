@@ -48,7 +48,7 @@ function [states] = Auction_D_PV(attacker,defender,defender_v,do_plot,kill_pro,s
     
     %% Targeting Init
     Def_alive=ones(N_def,1); % attacker alive (=1) col vector
-    Dist=zeros(N_att,N_def); %distance matrix (row=defender, col=attacker)
+    Dist=zeros(N_att,N_def); % distance matrix (row=defender, col=attacker)
 
     %% Prepare data to be saved for  NN training
     states=[Att_pos a_vel]; % initial state matrix: row=defender ONLY; col=states (PVA):PxPyVxVy
@@ -139,9 +139,10 @@ function [states] = Auction_D_PV(attacker,defender,defender_v,do_plot,kill_pro,s
         
         %% Plot
         if do_plot
-            plot(Def_pos(:,1),Def_pos(:,2),'r.','MarkerSize',16)
+            % switched colors for ONR brief
+            plot(Def_pos(:,1),Def_pos(:,2),'b.','MarkerSize',16)
             hold on;
-            plot(Att_pos(:,1),Att_pos(:,2),'b.','MarkerSize',16)
+            plot(Att_pos(:,1),Att_pos(:,2),'r.','MarkerSize',16)
             if rand_start
                 xlim(plot_axes_limit*[-1 1])
                 ylim(plot_axes_limit*[-1 1])

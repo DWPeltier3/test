@@ -111,6 +111,7 @@ function [states] = GreedyPro_D_PV(attacker, defender, defender_v, do_plot, kill
         Def_pos(:,1)=Def_pos(:,1)+vel(:,1);         % attacker Px = xprev+xvel
         Def_pos(:,2)=Def_pos(:,2)+vel(:,2);         % attacker Py = yprev+yvel
 
+        
         %% Update 'states' matrix history for output
         newstate=[Att_pos a_vel]; %defender ONLY
         newstate=reshape(newstate,1,1,[]);
@@ -118,9 +119,10 @@ function [states] = GreedyPro_D_PV(attacker, defender, defender_v, do_plot, kill
 
         %% Plot
         if do_plot
-            plot(Def_pos(:,1),Def_pos(:,2),'r.','MarkerSize',16)
+            % switched colors for ONR brief
+            plot(Def_pos(:,1),Def_pos(:,2),'b.','MarkerSize',16)
             hold on;
-            plot(Att_pos(:,1),Att_pos(:,2),'b.','MarkerSize',16)
+            plot(Att_pos(:,1),Att_pos(:,2),'r.','MarkerSize',16)
             if rand_start
                 xlim(plot_axes_limit*[-1 1])
                 ylim(plot_axes_limit*[-1 1])

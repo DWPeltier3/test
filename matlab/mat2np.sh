@@ -10,8 +10,8 @@
 
 . /etc/profile
 
-module load lang/miniconda3/4.10.3
+module load lang/miniconda3/23.1.0
 
-source activate cs4321_peltier
+source activate swarm
 
 python mat2np4.py

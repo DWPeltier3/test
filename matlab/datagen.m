@@ -1,12 +1,12 @@
 %% Collect & Save Data
 % Use this script to run 4 algorithms below using inputs
-% specified below "seedrange" number of times and collect defender 
+% specified "seedrange" number of times and collect defender 
 % data (position, velocity)
 
 clear all;
 
 %% Number of runs per class
-seedrange=5000; % # of samples (runs) to collect (per algorithm)
+seedrange=1200; % # of samples (runs) to collect (per algorithm)
 
 %% Simulation Inputs
 N_attacker=10;     % number of attackers
@@ -15,9 +15,8 @@ Defender_v_max=1;   % defender velocity maximum
 do_plot=false;
 final_fraction=0;   % final proportion of attackers remaining vs. #defenders
 accel=10;           % defender acceleration steps
-gaccel=1;           % original greedy defender acceleration steps
-kill_range=1;       % defender weapons range (kill attacker range
-rand_start=true;   % attackers start in random position
+kill_range=1;       % defender weapons range (kill attacker range)
+rand_start=false;   % attackers start in random position
 
 %% Save Data Flag and File Name
 savemat=true; %"true" will save all runs into a MATLAB .mat file

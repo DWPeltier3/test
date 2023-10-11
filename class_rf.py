@@ -13,7 +13,7 @@ from utils.elapse import elapse_time
 from utils.resources import print_resources
 import utils.params as params
 from utils.datapipeline import import_data
-from utils.results import print_results
+from utils.results import print_cm
 
 
 print("******************")
@@ -42,25 +42,6 @@ print('test runs:',test_runs)
 print('time steps:',time_steps)
 print('num features:',num_features)
 print('num agents:',num_agents)
-
-
-## VISUALIZE INPUT DATA (TIME SERIES PLOTS)
-# Select a random sample
-sample_idx = np.random.randint(0, x_train.shape[0])
-# Get data for that sample
-sample_data = x_train[sample_idx]
-# Plot positions and velocities over time for each agent
-num_subplot=math.ceil(math.sqrt(num_agents))
-plt.figure(figsize=(20,20))
-for agent_idx in range(num_agents):
-    plt.subplot(num_subplot,num_subplot, agent_idx + 1)
-    plt.plot(sample_data[:, agent_idx], label='Px')
-    plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
-    plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
-    plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
-    plt.legend()
-    plt.title(f'Agent {agent_idx + 1}')
-plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
 
 
 ## Reshape data for sklearn
@@ -114,7 +95,7 @@ elapse_time(start)
 ## RESULTS
 class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
 attribute_names = ["COMMS", "PRONAV"]
-print_results(hparams, y_test, y_pred, class_names, attribute_names)
+print_cm(hparams, y_test, y_pred, class_names, attribute_names)
 
 # VISUALIZE FEATURE IMPORTANCE
 num_subplot=math.ceil(math.sqrt(time_steps))

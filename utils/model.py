@@ -40,7 +40,8 @@ def fc_model(
         output_shape,
         ):
     ## PARAMETERS
-    mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
+    # mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
+    mlp_units=[60,80] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
@@ -63,15 +64,8 @@ def fc_model(
     if hparams.output_type!='mh':
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
     else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        concat=keras.layers.Concatenate()([x,output_attr]) #use attribute output to try and improve class output
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+        # outputs=mh_version1(output_shape, out_activation, x) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, x) ## VERSION 2
 
     return keras.Model(inputs=inputs, outputs=outputs, name="Fully_Connected_" + hparams.output_type)
 
@@ -113,16 +107,8 @@ def cnn_model(
     if hparams.output_type!='mh':
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(drop)
     else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(drop)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(drop)
-        # concat=keras.layers.Concatenate()([drop,output_attr]) #use attribute output to try and improve class output
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        # outputs=[output_class, output_attr]
-        outputs=mh_version2(output_shape, out_activation, drop)
+        # outputs=mh_version1(output_shape, out_activation, drop) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, drop) ## VERSION 2
 
     return keras.Model(inputs=inputs, outputs=outputs, name='CNN_' + hparams.output_type)
 
@@ -162,15 +148,8 @@ def fcn_model(
     if hparams.output_type!='mh':
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
     else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(gap)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        concat=keras.layers.Concatenate()([gap,output_attr]) #use attribute output to try and improve class output
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+        # outputs=mh_version1(output_shape, out_activation, gap) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, gap) ## VERSION 2
 
     return keras.Model(inputs=inputs, outputs=outputs, name='FCN_' + hparams.output_type)
 
@@ -200,15 +179,8 @@ def resnet_model(
     if hparams.output_type!='mh':
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(gap)
     else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(gap)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(gap)
-        concat=keras.layers.Concatenate()([gap,output_attr]) #use attribute output to try and improve class output
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+        # outputs=mh_version1(output_shape, out_activation, gap) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, gap) ## VERSION 2
 
     return keras.Model(inputs=inputs, outputs=outputs, name='ResNet_' + hparams.output_type)
 
@@ -257,7 +229,8 @@ def lstm_model(
         output_shape,
         ):
     ## PARAMETERS
-    units=[40,20] # each entry becomes an LSTM layer
+    # units=[40,20] # each entry becomes an LSTM layer
+    units=[150,130,10,110,100] # each entry becomes an LSTM layer
     kernel_initializer=hparams.kernel_initializer
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
@@ -286,19 +259,10 @@ def lstm_model(
                                 kernel_initializer=kernel_initializer)(x)
         count+=1
     if hparams.output_type!='mh':
-        # time distributed (dense) layer improves by 1%, but messes up "vector" output size
-        # outputs = keras.layers.TimeDistributed(keras.layers.Dense(output_shape, activation=out_activation))(x)
         outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
     else: # multihead classifier (2 outputs)
-        ## VERSION 1
-        # output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(x)
-        # output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        # outputs=[output_class, output_attr]
-        ## VERSION 2
-        output_attr=keras.layers.Dense(output_shape[1], activation=out_activation[1], name='output_attr')(x)
-        concat=keras.layers.Concatenate()([x,output_attr])
-        output_class=keras.layers.Dense(output_shape[0], activation=out_activation[0], name='output_class')(concat)
-        outputs=[output_class, output_attr]
+        # outputs=mh_version1(output_shape, out_activation, x) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, x) ## VERSION 2
 
     return keras.Model(inputs=inputs, outputs=outputs, name='LSTM_' + hparams.output_type)
 
