@@ -166,8 +166,8 @@ def import_data(hparams):
             train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
             test_temp=np.zeros((y_test.shape[0], window), dtype=np.int8)
             for c in range(num_classes):
-                train_temp[y_train[:,0]==c]=[c]
-                test_temp[y_test[:,0]==c]=[c]
+                train_temp[y_train[:,0]==c]=c
+                test_temp[y_test[:,0]==c]=c
             if output_type == 'mh':
                 y_train_class=train_temp
                 y_test_class=test_temp

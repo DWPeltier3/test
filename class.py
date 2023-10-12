@@ -59,7 +59,7 @@ elif hparams.mode == 'predict':
 ## VISUALIZE MODEL
 model.summary()
 # make GRAPHVIZ plot of model
-tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
+# tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
 # ## TRANSFORMER TROUBLESHOOTING
@@ -182,27 +182,30 @@ print(eval) #print evaluation metrics numbers
 
 
 ## PRINT CONFUSION MATRIX
-print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+# print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+
 
 ## PRINT TSNE DIMENSIONALITY REDUCTION
+perplexity=100
 # Input Data
-features = x_test 
+features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
 labels = y_test if hparams.output_type == 'mc' else y_test[0] # true labels
-title="Raw Data"
-print_tsne(hparams, features, labels, class_names, title)
+title="Input Data"
+print_tsne(hparams, features, labels, class_names, title, perplexity)
 # Model Outputs
 pre_output_layer=-4 if hparams.output_type == 'mh' else -2
 model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
 features = model_preoutput(x_test)
 labels = y_pred if hparams.output_type == 'mc' else y_pred_class # predicted labels
-title="Model Outputs"
-print_tsne(hparams, features, labels, class_names, title)
+title="Model Predictions"
+print_tsne(hparams, features, labels, class_names, title, perplexity)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)
 # only available if the model has a "Global Avg Pooling" layer, and CONV layers
 if hparams.model_type=='fcn':
     print_cam(hparams, model, x_train) #sample can be any training instance
+
 
 ## PRINT ELAPSE TIME
 elapse_time(start)

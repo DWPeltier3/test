@@ -10,8 +10,7 @@ from utils.datapipeline import import_data, get_dataset
 from utils.model_tune import get_model
 from utils.compiler import get_loss, get_optimizer, get_metric
 from utils.callback import callback_list
-from utils.results import print_results
-from utils.trainplot import train_plot
+from utils.results import print_train_plot, print_cm, print_cam, print_tsne
 
 ## INTRO
 start = timer() # start timer to calculate run time
@@ -196,7 +195,7 @@ if hparams.mode == 'train':
     ## SAVE ENTIRE MODEL AFTER TRAINING
     model.save(filepath=hparams.model_dir+"model.keras", save_format="keras") #saves entire model: weights and layout
     ## TRAINING CURVE: ACCURACY/LOSS vs. EPOCH
-    train_plot(hparams, model_history)
+    print_train_plot(hparams, model_history)
 
 
 ## TEST DATA PREDICTIONS
@@ -255,8 +254,29 @@ print('model.metrics_names:\n',model.metrics_names) #print evaluation metrics na
 print(eval) #print evaluation metrics numbers
 
 
-## RESULTS
-print_results(hparams, y_test, y_pred, class_names, attribute_names)
+## PRINT CONFUSION MATRIX
+print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+
+
+## PRINT TSNE DIMENSIONALITY REDUCTION
+# Input Data
+features = x_test 
+labels = y_test if hparams.output_type == 'mc' else y_test[0] # true labels
+title="Raw Data"
+print_tsne(hparams, features, labels, class_names, title)
+# Model Outputs
+pre_output_layer=-4 if hparams.output_type == 'mh' else -2
+model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
+features = model_preoutput(x_test)
+labels = y_pred if hparams.output_type == 'mc' else y_pred_class # predicted labels
+title="Model Outputs"
+print_tsne(hparams, features, labels, class_names, title)
+
+
+## PRINT CLASS ACTIVATION MAPS (if FCN model)
+# only available if the model has a "Global Avg Pooling" layer, and CONV layers
+if hparams.model_type=='fcn':
+    print_cam(hparams, model, x_train) #sample can be any training instance
 
 
 ## PRINT ELAPSE TIME

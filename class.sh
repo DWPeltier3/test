@@ -16,12 +16,12 @@ module load app/graphviz/8.0.5
 source activate swarm
 
 python class.py \
---mode="train" \
---trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
+--mode="predict" \
+--trained_model="/home/donald.peltier/swarm/model/historical/models/FCN/swarm_class10-11_11-48-01_FCNmhWfull/model.keras" \
 --model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=20 \
---model_type="fc" \
+--window=-1 \
+--model_type="fcn" \
 --output_type="mh" \
 --output_length="vec" \
 --dropout=0.2 \

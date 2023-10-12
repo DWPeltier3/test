@@ -166,10 +166,10 @@ def get_cam(model, sample, last_conv_layer_name):
     heatmap = heatmap * np.max(sample)
     return heatmap[0]
 
-def print_tsne(hparams, features, labels, class_names, title):
+def print_tsne(hparams, features, labels, class_names, title, perplexity):
     print(f'features.shape {features.shape}')
     print(f'labels.shape {labels.shape}')
-    tsne = TSNE(n_components=2, perplexity=100).fit_transform(features) # set perplexity = 50-100
+    tsne = TSNE(n_components=2, perplexity=perplexity).fit_transform(features) # set perplexity = 50-100
     scaler = MinMaxScaler()
     tsne = scaler.fit_transform(tsne.reshape(-1, tsne.shape[-1])).reshape(tsne.shape)
     tx = tsne[:, 0]
