@@ -10,7 +10,7 @@ from utils.datapipeline import import_data, get_dataset
 from utils.model import get_model
 from utils.compiler import get_loss, get_optimizer, get_metric
 from utils.callback import callback_list
-from utils.results import print_train_plot, print_cm, print_cam
+from utils.results import print_train_plot, print_cm, print_cam, print_tsne
 
 
 ## INTRO
@@ -183,6 +183,20 @@ print(eval) #print evaluation metrics numbers
 
 ## PRINT CONFUSION MATRIX
 print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+
+## PRINT TSNE DIMENSIONALITY REDUCTION
+# Input Data
+features = x_test 
+labels = y_test if hparams.output_type == 'mc' else y_test[0] # true labels
+title="Raw Data"
+print_tsne(hparams, features, labels, class_names, title)
+# Model Outputs
+pre_output_layer=-4 if hparams.output_type == 'mh' else -2
+model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
+features = model_preoutput(x_test)
+labels = y_pred if hparams.output_type == 'mc' else y_pred_class # predicted labels
+title="Model Outputs"
+print_tsne(hparams, features, labels, class_names, title)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)

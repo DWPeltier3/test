@@ -71,18 +71,21 @@ def import_data(hparams):
 
     # ## PCA
     # class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+    # num_classes=len(np.unique(y_train))
+    # # # remove a class == value
+    # # value = 2
+    # # indices_to_remove = np.where(y_train == value)[0]
+    # # x_train = np.delete(x_train, indices_to_remove, axis=0)
+    # # y_train = np.delete(y_train, indices_to_remove, axis=0)
     # x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
     # # must have label for every timestep (same as "sequence output")
     # train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
-    # num_classes=len(np.unique(y_train))
     # for c in range(num_classes):
-    #     train_temp[y_train[:,0]==c]=[c]
+    #     train_temp[y_train[:,0]==c]=c
     # y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
     # print('\n*** DATA for PCA ***')
     # print('x_pca shape:',x_pca.shape)
     # print('y_pca shape:',y_pca.shape)
-    # print('train_temp shape:',train_temp.shape)
-    # print('train_temp.ravel shape:',train_temp.ravel().shape)
     # # Perform PCA
     # pca = PCA(n_components=3)
     # pca_result = pca.fit_transform(x_pca)

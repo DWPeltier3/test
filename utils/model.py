@@ -41,7 +41,7 @@ def fc_model(
         ):
     ## PARAMETERS
     # mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
-    mlp_units=[60,80] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
+    mlp_units=[60,80] # tuned entries
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None

@@ -18,13 +18,13 @@ source activate swarm
 python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class09-08_14-30/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_LSTM_Vec/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=-1 \
---model_type="lstm" \
+--window=20 \
+--model_type="fc" \
 --output_type="mh" \
---output_length="seq" \
---dropout=0. \
+--output_length="vec" \
+--dropout=0.2 \
 --kernel_initializer="he_normal" \
 --kernel_regularizer="none" \
 --optimizer="adam" \
