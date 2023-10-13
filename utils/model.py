@@ -41,7 +41,7 @@ def fc_model(
         ):
     ## PARAMETERS
     # mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
-    mlp_units=[60,80] # tuned entries
+    mlp_units=[60,80] # Tuned
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
@@ -80,9 +80,14 @@ def cnn_model(
     filters=[64,64,64] # each entry becomes a Conv1D layer (# entries = # conv layers)
     kernels=[3,3,3] # corresponding kernel size for Conv1d layer above
     pool_size=2 # max pooling window
+    dropout=hparams.dropout
+    # MH Tuned: F{224,32,160,224,96,224},K{7,7,5,7,5,3},P3,D.3
+    # filters=[224,32,160,224,96,224] # Tuned
+    # kernels=[7,7,5,7,5,3] # Tuned
+    # pool_size=3 # Tuned
+    # dropout=0.3 # Tuned
     stride=2
     padding="same" # "same" keeps output size = input size with padding
-    dropout=hparams.dropout
     kernel_initializer=hparams.kernel_initializer
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
@@ -230,7 +235,8 @@ def lstm_model(
         ):
     ## PARAMETERS
     # units=[40,20] # each entry becomes an LSTM layer
-    units=[150,130,10,110,100] # each entry becomes an LSTM layer
+    # units=[150,130,10,110,100] # SEQ: Tuned
+    units=[150,130,10,110,100] # VEC: Tuned
     kernel_initializer=hparams.kernel_initializer
     dropout=hparams.dropout
     if hparams.kernel_regularizer == "none":
@@ -276,7 +282,7 @@ def tr_model(
     ## PARAMETERS
     length=input_shape[0]
     num_enc_layers = 4 # number of encoder layers
-    dinput = 128  # dinput=input_shape[1]
+    dinput = hparams.dim  # 128; dimension of input embedding (and therefore also TRAN embedding dimension)
     dff = 512
     num_heads = 4
     dropout=hparams.dropout
@@ -286,24 +292,31 @@ def tr_model(
         out_activation="sigmoid"
     elif hparams.output_type == 'mh': # multihead = mc & ml
         out_activation=["softmax","sigmoid"]
-    print(f'input length {length}')
+    # print(f'input length {length}')
     print(f'# encode layers {num_enc_layers}')
+    print(f'# heads {num_heads}')
     print(f'D_input {dinput}')
     print(f'D_ff {dff}')
-    print(f'# heads {num_heads}')
     ## MODEL
     inputs = keras.Input(shape=input_shape)
     x = inputs
     # input enmbedding
     x = tf.keras.layers.Conv1D(filters=dinput, kernel_size=1, activation="relu")(x)
+    # x = tf.keras.layers.LSTM(dinput,return_sequences=True)(x)
+    # x = tf.keras.layers.Dense(dinput, activation="relu")(x)
     # position encoding
     x *= tf.math.sqrt(tf.cast(dinput, tf.float32))
-    x = x + positional_encoding(length=2048, depth=dinput)[tf.newaxis, :length, :dinput]
+    x += positional_encoding(length=2048, depth=dinput)[tf.newaxis, :length, :dinput]
     for _ in range(num_enc_layers):
         x = transformer_encoder(x, dinput, num_heads, dff, dropout)
-    x = tf.keras.layers.GlobalAveragePooling1D()(x)
+    if hparams.output_length == 'vec': # if single output, need to reduce time axis to 1
+        x = tf.keras.layers.GlobalAveragePooling1D()(x) # averages features across all time steps
     x = tf.keras.layers.Dropout(dropout)(x)
-    outputs = tf.keras.layers.Dense(output_shape, activation=out_activation)(x)
+    if hparams.output_type!='mh':
+        outputs = keras.layers.Dense(output_shape, activation=out_activation)(x)
+    else: # multihead classifier (2 outputs)
+        # outputs=mh_version1(output_shape, out_activation, x) ## VERSION 1
+        outputs=mh_version2(output_shape, out_activation, x) ## VERSION 2
     
     return keras.Model(inputs=inputs, outputs=outputs, name='TRANS_' + hparams.output_type)
 
@@ -312,7 +325,7 @@ def transformer_encoder(input, dinput, num_heads, dff, dropout):
     attn_output = tf.keras.layers.MultiHeadAttention(
         key_dim=dinput, num_heads=num_heads, dropout=dropout)(input, input)
     x = tf.keras.layers.Add()([input, attn_output])
-    x = tf.keras.layers.LayerNormalization()(x) #epsilon=1e-6
+    x = tf.keras.layers.LayerNormalization()(x) #std norm across last axis (-1=features)
     skip = x
     ## FEED FORWARD
     x = tf.keras.layers.Dense(dff, activation='relu')(x)

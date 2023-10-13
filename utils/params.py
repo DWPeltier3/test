@@ -42,6 +42,7 @@ def make_argparser():
     parser.add_argument("--model_type", type=str, help="fc=fully connect, cn=CNN, fcn=fully CNN, res=ResNet, tr=transformer")
     parser.add_argument("--output_type", type=str, help="mc=multiclass, ml=multilabel, mo=multiout")
     parser.add_argument("--output_length", type=str, help="vec=vector (final only), seq=sequence (every time step)")
+    parser.add_argument("--dim", type=int, default=50, help="any dimension to be used in a model")
 
     parser.add_argument("--dropout", type=float, default=0, help="dropout percentage 0 to 1 (ie. 0.2=20%)")
     parser.add_argument("--kernel_initializer", type=str, default="glorot_uniform", help="glorot_uniform/normal (default, sigmoid), he_uniform/normal (relu)")

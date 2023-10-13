@@ -59,7 +59,7 @@ elif hparams.mode == 'predict':
 ## VISUALIZE MODEL
 model.summary()
 # make GRAPHVIZ plot of model
-# tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
+tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
 # ## TRANSFORMER TROUBLESHOOTING
@@ -111,9 +111,9 @@ if hparams.mode == 'train':
     print("\nhistory.history.keys()\n", model_history.history.keys()) # this is what you want (only key names)
     ## PRINT TRAINING ELAPSE TIME
     elapse_time(start)
-    if hparams.model_type!='tr':
-        ## SAVE ENTIRE MODEL AFTER TRAINING
-        model.save(filepath=hparams.model_dir+"model.keras", save_format="keras") #saves entire model: weights and layout
+    # if hparams.model_type!='tr': ## SUBCLASS TRANSFORMER ONLY
+    ## SAVE ENTIRE MODEL AFTER TRAINING
+    model.save(filepath=hparams.model_dir+"model.keras", save_format="keras") #saves entire model: weights and layout
     ## TRAINING CURVE: ACCURACY/LOSS vs. EPOCH
     print_train_plot(hparams, model_history)
 
@@ -182,23 +182,30 @@ print(eval) #print evaluation metrics numbers
 
 
 ## PRINT CONFUSION MATRIX
-# print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+print_cm(hparams, y_test, y_pred, class_names, attribute_names)
 
 
 ## PRINT TSNE DIMENSIONALITY REDUCTION
-perplexity=100
-# Input Data
-features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
-labels = y_test if hparams.output_type == 'mc' else y_test[0] # true labels
-title="Input Data"
-print_tsne(hparams, features, labels, class_names, title, perplexity)
-# Model Outputs
-pre_output_layer=-4 if hparams.output_type == 'mh' else -2
-model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
-features = model_preoutput(x_test)
-labels = y_pred if hparams.output_type == 'mc' else y_pred_class # predicted labels
-title="Model Predictions"
-print_tsne(hparams, features, labels, class_names, title, perplexity)
+if (hparams.output_length == 'vec') and (hparams.output_type != 'ml'): #could perform for each attribute separately...
+    perplexity=100
+    # Input Data
+    features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
+    labels = y_test if hparams.output_type != 'mh' else y_test[0] # true labels
+    # if hparams.output_length == 'seq':
+    #     features = x_test.reshape(-1,x_test.shape[-1]) # (batch*time, features)
+    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
+    title="Input Data"
+    print_tsne(hparams, features, labels, class_names, title, perplexity)
+    # Model Outputs
+    pre_output_layer=-4 if hparams.output_type == 'mh' else -2
+    model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
+    features = model_preoutput(x_test)
+    labels = y_pred if hparams.output_type != 'mh' else y_pred_class # predicted labels
+    # if hparams.output_length == 'seq':
+    #     features = features.reshape(x_test.shape[0]*x_test.shape[1],-1) # (batch*time, other); **CAN'T perform np ops on tensor
+    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
+    title="Model Predictions"
+    print_tsne(hparams, features, labels, class_names, title, perplexity)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)

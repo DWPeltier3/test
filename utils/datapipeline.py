@@ -297,6 +297,9 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     train_dataset = train_dataset.cache().shuffle(train_dataset.cardinality())
     val_dataset = val_dataset.cache().shuffle(val_dataset.cardinality())
     
+    if hparams.model_type == 'tr':
+        test_dataset = test_dataset.map(add_positional_encoding_to_features)
+
     return (train_dataset, val_dataset, test_dataset)
 
 #SUBCLASS TRANS(E/D) needs dataset in form (input,label),label
@@ -306,3 +309,19 @@ def prepare_batch(data, label):
     label_inputs=label
     label_inputs[:,0]=-1 # replace first label with random start token
     return (data, label_inputs), label
+
+
+## TRANSFORMER: ADJUST TEST SET FOR INFERENCE
+def add_positional_encoding_to_features(features, labels):
+    features += positional_encoding(length=2048, depth=128)[:features.shape[1], :features.shape[2]]
+    return features, labels
+def positional_encoding(length, depth):
+    if depth % 2 == 1: depth += 1  # depth must be even
+    depth = depth/2
+    positions = np.arange(length)[:, np.newaxis]     # (seq, 1)
+    depths = np.arange(depth)[np.newaxis, :]/depth   # (1, depth)
+    angle_rates = 1 / (10000**depths)         # (1, depth)
+    angle_rads = positions * angle_rates      # (pos, depth)
+    pos_encoding = np.concatenate(
+       [np.sin(angle_rads), np.cos(angle_rads)],axis=-1) 
+    return tf.cast(pos_encoding, dtype=tf.float64)
