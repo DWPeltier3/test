@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=swarm-class
-#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j.txt
+#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j_TUNE_TRmcWFULLvec.txt
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
+#SBATCH --mem=64G
 #SBATCH --time=24:00:00
 #SBATCH --partition=beards
 
@@ -15,12 +15,12 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class.py \
+python class_tune.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/historical/Tuner/Hyperband/swarm_class10-04_05-11-07_LSTMmhSEQfull/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCmhFull/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_TUNE_TRmcWFULLvec/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=20 \
+--window=-1 \
 --model_type="tr" \
 --output_type="mc" \
 --output_length="vec" \
