@@ -18,12 +18,12 @@ source activate swarm
 python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/historical/Tuner/Hyperband/swarm_class10-04_05-11-07_LSTMmhSEQfull/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_TREmhSEQwfull/" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCmhFull/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
---window=-1 \
+--window=20 \
 --model_type="tr" \
---output_type="mh" \
---output_length="seq" \
+--output_type="mc" \
+--output_length="vec" \
 --dim=128 \
 --dropout=0.2 \
 --kernel_initializer="he_normal" \

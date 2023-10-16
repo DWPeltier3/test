@@ -81,9 +81,9 @@ def build_model(hp):
     
     elif model_type == 'tr':
         hparams.num_enc_layers=hp.Int("num_enc_layers", min_value=1, max_value=4, step=1)
-        hparams.num_heads=hp.Int("num_heads", min_value=2, max_value=4, step=2)
-        hparams.dinput=hp.Int("dinput", min_value=40, max_value=200, step=20)
-        hparams.dff=hp.Int("dff", min_value=300, max_value=600, step=100)
+        hparams.num_heads=hp.Int("num_heads", min_value=1, max_value=4, step=1)
+        hparams.dinput=hp.Int("dinput", min_value=100, max_value=600, step=100)
+        hparams.dff=hp.Int("dff", min_value=400, max_value=600, step=100)
         hparams.dropout=hp.Float("dropout", min_value=0.0, max_value=0.5, step=0.1)
 
     # window = hp.Int("window", min_value=10, max_value=58, step=4, default=20)
@@ -200,23 +200,21 @@ if hparams.mode == 'train':
 
 ## TEST DATA PREDICTIONS
 if hparams.output_type != 'mh':
-    pred=model.predict(x_test, verbose=0) #predicted label probabilities for test data
+    # pred=model.predict(x_test, verbose=0) #predicted label probabilities for test data
+    pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test data
 else: # multihead
     pred_class, pred_attr=model.predict(x_test, verbose=0) # multihead outputs 2 predictions (class and attribute)
-# check for errors in requested output_length
-output_length=hparams.output_length
-if hparams.model_type!='lstm' and hparams.model_type!='tr': # only 'lstm' and 'tr' can output sequences
-    output_length='vec'
+
 # convert from probability to label
-if hparams.output_type == 'mc' and output_length == 'vec':
+if hparams.output_type == 'mc' and hparams.output_length == 'vec':
     y_pred=np.argmax(pred,axis=1).reshape((-1,1))  #predicted class label for test data
-elif hparams.output_type == 'mc' and output_length == 'seq':
+elif hparams.output_type == 'mc' and hparams.output_length == 'seq':
     y_pred=np.argmax(pred,axis=2)  #predicted class label for test data
 elif hparams.output_type == 'ml':
     y_pred=pred.round().astype(np.int32)  #predicted attribute label for test data
 elif hparams.output_type == 'mh':
     y_pred_attr=pred_attr.round().astype(np.int32)
-    if output_length == 'vec':
+    if hparams.output_length == 'vec':
         y_pred_class=np.argmax(pred_class,axis=1).reshape((-1,1))
     else:
         y_pred_class=np.argmax(pred_class,axis=2)
@@ -234,7 +232,6 @@ print('    LABELS\nTrue vs. Predicted')
 if hparams.output_type != 'mh':
     for c in range(len(cs_idx)): # print each class name and corresponding prediction samples
         print(f"\n{class_names[c]}")
-        # print(f"first true label: \n{y_test[cs_idx[c]]}")
         print(np.concatenate((y_test[cs_idx[c]:cs_idx[c]+num_results],
                             y_pred[cs_idx[c]:cs_idx[c]+num_results]), axis=-1))
 else: # multihead output
@@ -249,7 +246,8 @@ else: # multihead output
 
 
 ## EVALUATE MODEL
-eval=model.evaluate(x_test, y_test, verbose=0) #loss and accuracy
+# eval=model.evaluate(x_test, y_test, verbose=0) #loss and accuracy
+eval=model.evaluate(test_dataset, verbose=0) #loss and accuracy
 print('model.metrics_names:\n',model.metrics_names) #print evaluation metrics names (loss and accuracy)
 print(eval) #print evaluation metrics numbers
 
@@ -259,18 +257,26 @@ print_cm(hparams, y_test, y_pred, class_names, attribute_names)
 
 
 ## PRINT TSNE DIMENSIONALITY REDUCTION
-# Input Data
-features = x_test 
-labels = y_test if hparams.output_type == 'mc' else y_test[0] # true labels
-title="Raw Data"
-print_tsne(hparams, features, labels, class_names, title)
-# Model Outputs
-pre_output_layer=-4 if hparams.output_type == 'mh' else -2
-model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
-features = model_preoutput(x_test)
-labels = y_pred if hparams.output_type == 'mc' else y_pred_class # predicted labels
-title="Model Outputs"
-print_tsne(hparams, features, labels, class_names, title)
+if (hparams.output_length == 'vec') and (hparams.output_type != 'ml'): #could perform for each attribute separately...
+    perplexity=100
+    # Input Data
+    features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
+    labels = y_test if hparams.output_type != 'mh' else y_test[0] # true labels
+    # if hparams.output_length == 'seq':
+    #     features = x_test.reshape(-1,x_test.shape[-1]) # (batch*time, features)
+    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
+    title="Input Data"
+    print_tsne(hparams, features, labels, class_names, title, perplexity)
+    # Model Outputs
+    pre_output_layer=-4 if hparams.output_type == 'mh' else -2
+    model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
+    features = model_preoutput(x_test)
+    labels = y_pred if hparams.output_type != 'mh' else y_pred_class # predicted labels
+    # if hparams.output_length == 'seq':
+    #     features = features.reshape(x_test.shape[0]*x_test.shape[1],-1) # (batch*time, other); **CAN'T perform np ops on tensor
+    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
+    title="Model Predictions"
+    print_tsne(hparams, features, labels, class_names, title, perplexity)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)

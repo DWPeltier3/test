@@ -32,10 +32,7 @@ if hparams.mode == 'train':
     if hparams.output_type == 'mh': # multihead output
         loss_weights={'output_class':0.2,'output_attr':0.8}
         print(f"Loss Weights: {loss_weights}\n")
-    # if GPUs>1: # Multi-GPU
-    # print(f"GPUs availale: {GPUs}, MULTI GPU TRAINING")
     mirrored_strategy = tf.distribute.MirroredStrategy()
-    # print('Number of devices: {}'.format(mirrored_strategy.num_replicas_in_sync))
     with mirrored_strategy.scope():
         model = get_model(hparams, input_shape, output_shape)
         model.compile(
@@ -43,46 +40,15 @@ if hparams.mode == 'train':
             optimizer=get_optimizer(hparams),
             metrics=get_metric(hparams),
             loss_weights=loss_weights)
-    # else: # single gpu
-    #     model = get_model(hparams, input_shape, output_shape)
-    #     model.compile(
-    #         loss=get_loss(hparams),
-    #         optimizer=get_optimizer(hparams),
-    #         metrics=get_metric(hparams),
-    #         loss_weights=loss_weights)
 
 elif hparams.mode == 'predict':
     model = tf.keras.models.load_model(hparams.trained_model)
 
-## SUBCLASS TRANSFORMER ONLY
-# if hparams.model_type!='tr':
+
 ## VISUALIZE MODEL
 model.summary()
 # make GRAPHVIZ plot of model
 tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
-
-
-# ## TRANSFORMER TROUBLESHOOTING
-# print("*** TRANSFORMER DATASET ***")
-# instance=train_dataset.take(1)
-# # for element in instance:
-# #     print(f'train instance {element}')
-# # for (x, y), z in instance:
-# #   break
-# for (x, y) in instance:
-#   break
-# print(f'model input shape (data shape) {x.shape}')
-# print(f'label_input shape {y.shape}')
-# # print(f'label shape {z.shape}')
-# output=model(x)
-# print(f'model output shape {output.shape}\n')
-
-# ## VISUALIZE MODEL
-# model.summary()
-
-# example=train_dataset.take(3)
-# for element in example:
-#     print(f'train element {element}')
 
 
 ## TRAIN MODEL
@@ -111,18 +77,10 @@ if hparams.mode == 'train':
     print("\nhistory.history.keys()\n", model_history.history.keys()) # this is what you want (only key names)
     ## PRINT TRAINING ELAPSE TIME
     elapse_time(start)
-    # if hparams.model_type!='tr': ## SUBCLASS TRANSFORMER ONLY
     ## SAVE ENTIRE MODEL AFTER TRAINING
     model.save(filepath=hparams.model_dir+"model.keras", save_format="keras") #saves entire model: weights and layout
     ## TRAINING CURVE: ACCURACY/LOSS vs. EPOCH
     print_train_plot(hparams, model_history)
-
-# ## SUBCLASS TRANSFORMER ONLY
-# if hparams.model_type=='tr':
-#     ## VISUALIZE MODEL
-#     model.summary()
-#     # make GRAPHVIZ plot of model
-#     tf.keras.utils.plot_model(model, hparams.model_dir + "graphviz.png", show_shapes=True)
 
 
 ## TEST DATA PREDICTIONS
@@ -131,9 +89,7 @@ if hparams.output_type != 'mh':
     pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test data
 else: # multihead
     pred_class, pred_attr=model.predict(x_test, verbose=0) # multihead outputs 2 predictions (class and attribute)
-# check for errors in requested output_length
-if hparams.model_type!='lstm' and hparams.model_type!='tr': # only 'lstm' and 'tr' can output sequences
-    hparams.output_length='vec'
+
 # convert from probability to label
 if hparams.output_type == 'mc' and hparams.output_length == 'vec':
     y_pred=np.argmax(pred,axis=1).reshape((-1,1))  #predicted class label for test data
