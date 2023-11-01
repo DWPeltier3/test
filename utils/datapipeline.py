@@ -48,26 +48,52 @@ def import_data(hparams):
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
 
-    # ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
-    # # Select sample
-    # # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
-    # sample_idx = 0 # first sample
-    # sample_data = x_train[sample_idx] # Get data for that sample
-    # # Plot positions and velocities over time for each agent
-    # num_agents=num_features//4
-    # num_subplot=math.ceil(math.sqrt(num_agents))
-    # plt.figure(figsize=(20,20))
-    # for agent_idx in range(num_agents):
-    #     plt.subplot(num_subplot,num_subplot, agent_idx + 1)
-    #     plt.plot(sample_data[:, agent_idx], label='Px')
-    #     plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
-    #     plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
-    #     plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
-    #     plt.xlabel('Time Step')
-    #     plt.ylabel('Feature Value [normalized]')
-    #     plt.legend()
-    #     plt.title(f'Agent {agent_idx + 1}')
-    # plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
+    ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
+    # Plots all agents' features vs. time window for one class
+    # Select sample
+    # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
+    sample_idx = 0 # first sample
+    sample_data = x_train[sample_idx] # Get data for that sample
+    # Plot positions and velocities over time for each agent
+    num_agents=num_features//4
+    num_subplot=math.ceil(math.sqrt(num_agents))
+    plt.figure(figsize=(20,20))
+    for agent_idx in range(num_agents):
+        plt.subplot(num_subplot,num_subplot, agent_idx + 1)
+        plt.plot(sample_data[:, agent_idx], label='Px')
+        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
+        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
+        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+        plt.xlabel('Time Step')
+        plt.ylabel('Feature Value [normalized]')
+        plt.legend()
+        plt.title(f'Agent {agent_idx + 1}')
+    plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
+
+    # Plots one agents' features vs. time window for all classes
+    # Find the unique classes and their first index
+    unique_classes, unique_indices = np.unique(y_train, return_index=True)
+    num_classes = len(unique_classes)
+    num_agents=num_features//4
+    agent_idx=0
+
+    # Create a subplot for each class to visualize features for Agent 1
+    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+    plt.figure(figsize=(20, 5 * num_classes))  # Adjust the figure size
+    for i, idx in enumerate(unique_indices):
+        sample_data = x_train[idx]  # Get data for that sample
+        plt.subplot(num_classes, 1, i + 1)
+        plt.plot(sample_data[:, agent_idx], label='Px')  # Position X for Agent
+        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')  # Position Y for Agent
+        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')  # Velocity X for Agent
+        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')  # Velocity Y for Agent
+        plt.xlabel('Time Step')
+        plt.ylabel('Feature Value [normalized]')
+        plt.legend()
+        plt.title(f'{class_names[i]}')
+    plt.savefig(hparams.model_dir + "Agent_feature_plots_per_class.png")
+
+
 
     # ## PCA
     # class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']

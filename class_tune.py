@@ -27,7 +27,7 @@ train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train
 loss_weights=None #  single output head
 if hparams.output_type == 'mh': # multihead output
     loss_weights={'output_class':0.2,'output_attr':0.8}
-    # print(f"Loss Weights: {loss_weights}\n")
+    print(f"Loss Weights: {loss_weights}\n")
 
 
 ## HYPERPARAMETER TUNING
@@ -86,13 +86,14 @@ def build_model(hp):
         hparams.dff=hp.Int("dff", min_value=400, max_value=600, step=100)
         hparams.dropout=hp.Float("dropout", min_value=0.0, max_value=0.5, step=0.1)
 
+    # EXAMPLE HYPER TUNE VARIABLES
     # window = hp.Int("window", min_value=10, max_value=58, step=4, default=20)
     # hparams.window=window
     # activation = hp.Choice("activation", ["relu", "tanh"])
     # dropout = hp.Boolean("dropout")
     # lr = hp.Float("lr", min_value=1e-4, max_value=1e-2, sampling="log")
 
-    # call existing model-building code with the hyperparameter values
+    # call existing model-building code, but now using "hp" hyperparameter variables
     model = get_model(hparams, input_shape, output_shape)
     model.compile(
         loss=get_loss(hparams),
@@ -102,8 +103,8 @@ def build_model(hp):
     
     return model
 
-## DEFINE SEARCH SPACE
-# tuner types: RandomSearch( , BayesianOptimization( , Hyperband
+## DEFINE TUNER TYPE & SEARCH SPACE
+# tuner types: RandomSearch, BayesianOptimization, Hyperband
 tuner=hparams.tune_type
 if tuner=="r": # random search
     tuner = keras_tuner.RandomSearch(
@@ -135,8 +136,7 @@ elif tuner=="h": # hyperband search
 print('\n*** SEARCH SPACE SUMMARY ***')
 tuner.search_space_summary() # print search space summary
 
-
-## START HYPERTUNING
+## START TUNING
 stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=hparams.patience)
 tuner.search(train_dataset,
              validation_data=val_dataset,
@@ -145,21 +145,21 @@ tuner.search(train_dataset,
              callbacks=[stop_early]
              )
 
-
-## SEARCH RESULTS
+## TOP 3 TUNING RESULTS
 print('\n*** RESULTS SUMMARY (TOP 3) ***')
 tuner.results_summary(3)
 
-
-# GET BEST HYPER-PARAMETERS FOUND
+# PRINT BEST HYPER-PARAMETERS FOUND
 print('\n*** BEST H-PARAMS ***')
 print(tuner.get_best_hyperparameters()[0].values,'\n')
 ## PRINT TUNING ELAPSE TIME
 elapse_time(start)
 
 
-# BUILD BEST MODEL
-model = build_model(tuner.get_best_hyperparameters()[0])
+# BUILD & COMPILE BEST TUNED MODEL
+mirrored_strategy = tf.distribute.MirroredStrategy()
+with mirrored_strategy.scope():
+    model = build_model(tuner.get_best_hyperparameters()[0])
 ## VISUALIZE MODEL
 model.summary()
 # MAKE GRAPHVIZ MODEL DIAGRAM
@@ -201,7 +201,7 @@ if hparams.mode == 'train':
 ## TEST DATA PREDICTIONS
 if hparams.output_type != 'mh':
     # pred=model.predict(x_test, verbose=0) #predicted label probabilities for test data
-    pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test data
+    pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test dataset
 else: # multihead
     pred_class, pred_attr=model.predict(x_test, verbose=0) # multihead outputs 2 predictions (class and attribute)
 

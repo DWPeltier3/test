@@ -281,10 +281,10 @@ def tr_model(
         ):
     ## PARAMETERS
     length=input_shape[0]
-    num_enc_layers = 4 # number of encoder layers
+    num_enc_layers = 2 #4 number of encoder layers
     dinput = hparams.dim  # 128; dimension of input embedding (and therefore also TRAN embedding dimension)
-    dff = 512
-    num_heads = 4
+    dff = 600 # 512
+    num_heads = 4 #4 number of attention heads (simultaneous attention mechanisims in parallel)
     dropout=hparams.dropout
     if hparams.output_type == 'mc':
         out_activation="softmax"

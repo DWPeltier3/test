@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=swarm-class
-#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j_TUNE_TRmcWFULLvec_2.txt
+#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class%j_agentplots.txt
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=128G
+#SBATCH --mem=16G
 #SBATCH --time=24:00:00
 #SBATCH --partition=beards
 
@@ -15,24 +15,24 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-python class_tune.py \
---mode="train" \
---trained_model="/home/donald.peltier/swarm/model/historical/Tuner/Hyperband/swarm_class10-04_05-11-07_LSTMmhSEQfull/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_TUNE_TRmcWFULLvec_2/" \
+python class.py \
+--mode="predict" \
+--trained_model="/home/donald.peltier/swarm/model/historical/Tuner/Random/swarm_class10-27_19-52-44_RT_TRVmhWFULL/model.keras" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_agentplots/" \
 --data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
 --window=-1 \
 --model_type="tr" \
---output_type="mc" \
+--output_type="mh" \
 --output_length="vec" \
---dim=128 \
---dropout=0.2 \
+--dim=600 \
+--dropout=0. \
 --kernel_initializer="he_normal" \
 --kernel_regularizer="none" \
 --optimizer="adam" \
 --initial_learning_rate=0.0001 \
 --callback_list="checkpoint, early_stopping, csv_log" \
 --patience=50 \
---tune_type="h" \
+--tune_type="r" \
 --tune_epochs=1000 \
 --num_epochs=1000 \
 --batch_size=50 \

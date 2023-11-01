@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from timeit import default_timer as timer
-import matplotlib.pyplot as plt
 
 import utils.params as params
 from utils.elapse import elapse_time
@@ -86,7 +85,7 @@ if hparams.mode == 'train':
 ## TEST DATA PREDICTIONS
 if hparams.output_type != 'mh':
     # pred=model.predict(x_test, verbose=0) #predicted label probabilities for test data
-    pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test data
+    pred=model.predict(test_dataset, verbose=0) #predicted label probabilities for test dataset
 else: # multihead
     pred_class, pred_attr=model.predict(x_test, verbose=0) # multihead outputs 2 predictions (class and attribute)
 
