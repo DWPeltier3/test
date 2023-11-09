@@ -62,6 +62,7 @@ def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
         disp = ConfusionMatrixDisplay(cm, display_labels=class_names)
         disp.plot()
         plt.savefig(hparams.model_dir + "conf_matrix_MC.png")
+        print(classification_report(y_test, y_pred, target_names=class_names))
     # multilabel
     elif hparams.output_type == 'ml':
         if hparams.output_length == 'seq':
@@ -90,6 +91,7 @@ def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
         disp = ConfusionMatrixDisplay(cm, display_labels=class_names)
         disp.plot()
         plt.savefig(hparams.model_dir + "conf_matrix_MC.png")
+        print(classification_report(y_test[0], y_pred[0], target_names=class_names))
         # multilabel results
         if hparams.output_length == 'seq':
             y_test[1]=y_test[1].reshape((-1,2)) #finds 'pseudo' CM for sequence output (every time step is prediction)
@@ -113,7 +115,7 @@ def print_cam(hparams, model, x_train):
     visualize input importance in making a prediction.  This is only applicable for models
     that have a Global Average Pooling layer (ex: Fully Convolutional Network)'''
     
-    # select one training sample to analyze
+    # select one training sample (engagement) to analyze
     sample = x_train[20]
     # Get the class activation map for that sample
     last_cov_layer=-5 if hparams.output_type == 'mh' else -3 # multihead v2 has 2 extra layers at end
@@ -133,10 +135,14 @@ def print_cam(hparams, model, x_train):
     num_agents=num_features//4
     plt.figure(figsize=(10, 8))
     agent_idx=1
-    plt.plot(sample[:, agent_idx], label='Px')
-    plt.plot(sample[:, agent_idx+num_agents], label='Py')
-    plt.plot(sample[:, agent_idx+2*num_agents], label='Vx')
-    plt.plot(sample[:, agent_idx+3*num_agents], label='Vy')
+    if num_features==40:
+        plt.plot(sample[:, agent_idx], label='Px')
+        plt.plot(sample[:, agent_idx+num_agents], label='Py')
+        plt.plot(sample[:, agent_idx+2*num_agents], label='Vx')
+        plt.plot(sample[:, agent_idx+3*num_agents], label='Vy')
+    else:
+        plt.plot(sample[:, agent_idx], label='Agent Feature 1')
+        plt.plot(sample[:, agent_idx+num_agents], label='Agent Feature 2')
     plt.plot(heatmap, label='CAM [importance]', c='red', lw=5, linestyle='dashed')
     plt.xlabel('Time Step')
     plt.ylabel('Feature Value [normalized]')

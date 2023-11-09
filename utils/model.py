@@ -41,8 +41,11 @@ def fc_model(
         ):
     ## PARAMETERS
     mlp_units=[100,12] # each entry becomes a dense layer with corresponding # neurons (# entries = # hidden layers)
-    # mlp_units=[60,80] # Tuned
     dropout=hparams.dropout
+    # MHw20 Tuned:
+    if hparams.output_type=='mh' and hparams.window==20:
+        mlp_units=[60,80] # Tuned
+        dropout=0.2 # Tuned
     if hparams.kernel_regularizer == "none":
         kernel_regularizer=None
     else:
@@ -81,11 +84,18 @@ def cnn_model(
     kernels=[3,3,3] # corresponding kernel size for Conv1d layer above
     pool_size=2 # max pooling window
     dropout=hparams.dropout
-    # MH Tuned: F{224,32,160,224,96,224},K{7,7,5,7,5,3},P3,D.3
-    # filters=[224,32,160,224,96,224] # Tuned
-    # kernels=[7,7,5,7,5,3] # Tuned
-    # pool_size=3 # Tuned
-    # dropout=0.3 # Tuned
+    #MHw20 Tuned:
+    if hparams.output_type=='mh' and hparams.window==20:
+        filters=[224,32,160,224,96,224] # Tuned
+        kernels=[7,7,5,7,5,3] # Tuned
+        pool_size=3 # Tuned
+        dropout=0.3 # Tuned
+    # MHwFULL Tuned:
+    if hparams.output_type=='mh' and hparams.window==-1:
+        filters=[64,32,192,96] # Tuned
+        kernels=[3,3,5,7] # Tuned
+        pool_size=3 # Tuned
+        dropout=0.1 # Tuned
     stride=2
     padding="same" # "same" keeps output size = input size with padding
     kernel_initializer=hparams.kernel_initializer
@@ -128,6 +138,10 @@ def fcn_model(
     # filters=[128,256,128] # each entry becomes a Conv1D layer (# entries = # conv layers)
     filters=[64,128,256] # each entry becomes a Conv1D layer (# entries = # conv layers)
     kernels=[8,5,3] # corresponding kernel size for Conv1d layer above
+    # MHwFULL Tuned:
+    if hparams.output_type=='mh' and hparams.window==-1:
+        filters=[96,32] # Tuned
+        kernels=[7,5] # Tuned
     padding="same" # "same" keeps output size = input size with padding
     kernel_initializer=hparams.kernel_initializer
     if hparams.kernel_regularizer == "none":
@@ -282,10 +296,24 @@ def tr_model(
     ## PARAMETERS
     length=input_shape[0]
     num_enc_layers = 2 #4 number of encoder layers
-    dinput = hparams.dim  # 128; dimension of input embedding (and therefore also TRAN embedding dimension)
-    dff = 600 # 512
+    dinput = 500  # 128; dimension of input embedding (and therefore also TRAN embedding dimension)
+    dff = 400 # 512
     num_heads = 4 #4 number of attention heads (simultaneous attention mechanisims in parallel)
     dropout=hparams.dropout
+    # MHVwFULL Tuned:
+    if hparams.output_length=='vec' and hparams.window==-1:
+        num_enc_layers = 2 # Tuned
+        dinput = 500  # Tuned
+        dff = 400 # Tuned
+        num_heads = 4 # Tuned
+        dropout=0
+    # MHSwFULL Tuned:
+    if hparams.output_length=='seq' and hparams.window==-1:
+        num_enc_layers = 2 # Tuned
+        dinput = 500  # Tuned
+        dff = 600 # Tuned
+        num_heads = 4 # Tuned
+        dropout=0
     if hparams.output_type == 'mc':
         out_activation="softmax"
     elif hparams.output_type == 'ml':

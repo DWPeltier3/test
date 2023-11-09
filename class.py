@@ -164,9 +164,9 @@ if (hparams.output_length == 'vec') and (hparams.output_type != 'ml'): #could pe
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)
-# only available if the model has a "Global Avg Pooling" layer, and CONV layers
+# only available if the model has a "Global Avg Pooling" layer and CONV layers
 if hparams.model_type=='fcn':
-    print_cam(hparams, model, x_train) #sample can be any training instance
+    print_cam(hparams, model, x_train)
 
 
 ## PRINT ELAPSE TIME

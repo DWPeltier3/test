@@ -24,7 +24,22 @@ def import_data(hparams):
     ## CHARACTERIZE DATA
     time_steps=x_train.shape[1]
     num_features=x_train.shape[2]
+    num_agents=num_features//4
     
+    # ## TEST USING VELOCITY ONLY
+    # print('\n*** VELOCITY ONLY ***')
+    # v_idx = num_agents * 2
+    # x_train = x_train[:, :, v_idx:]
+    # x_test = x_test[:, :, v_idx:]
+    # num_features=x_train.shape[2]
+
+    # ## TEST USING POSITION ONLY
+    # print('\n*** POSITION ONLY ***')
+    # v_idx = num_agents * 2
+    # x_train = x_train[:, :, :v_idx]
+    # x_test = x_test[:, :, :v_idx]
+    # num_features=x_train.shape[2]
+
     ## VISUALIZE DATA
     print('\n*** DATA ***')
     print('xtrain shape:',x_train.shape)
@@ -32,7 +47,7 @@ def import_data(hparams):
     print('ytrain shape:',y_train.shape)
     print('ytest shape:',y_test.shape)
     print('num features:',num_features)
-    print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,:num_features])
+    print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,0,:num_features])
     print('ytrain sample (first instance)',y_train[0])
 
     ## REDUCE OBSERVATION WINDOW, IF REQUIRED
@@ -49,6 +64,7 @@ def import_data(hparams):
     print('xtest shape:',x_test.shape)
 
     ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
+    '''
     # Plots all agents' features vs. time window for one class
     # Select sample
     # sample_idx = np.random.randint(0, x_train.shape[0]) # if want a random sample
@@ -69,73 +85,74 @@ def import_data(hparams):
         plt.legend()
         plt.title(f'Agent {agent_idx + 1}')
     plt.savefig(hparams.model_dir + "Agent_feature_plots.png")
-
+    '''
     # Plots one agents' features vs. time window for all classes
     # Find the unique classes and their first index
     unique_classes, unique_indices = np.unique(y_train, return_index=True)
     num_classes = len(unique_classes)
     num_agents=num_features//4
     agent_idx=0
-
     # Create a subplot for each class to visualize features for Agent 1
     class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    plt.figure(figsize=(20, 5 * num_classes))  # Adjust the figure size
+    # plt.figure(figsize=(20, 5))  # one row of plots
+    plt.figure(figsize=(10, 10))  # 2x2 plots
     for i, idx in enumerate(unique_indices):
         sample_data = x_train[idx]  # Get data for that sample
-        plt.subplot(num_classes, 1, i + 1)
+        # plt.subplot(1, num_classes, i + 1) # one row of plots
+        plt.subplot(num_classes//2, num_classes//2, i + 1) #2x2 plots
         plt.plot(sample_data[:, agent_idx], label='Px')  # Position X for Agent
         plt.plot(sample_data[:, agent_idx+num_agents], label='Py')  # Position Y for Agent
         plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')  # Velocity X for Agent
         plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')  # Velocity Y for Agent
+        # plt.plot(sample_data[:, agent_idx], label='Agent Feature 1')  # Vx for Agent (V only or P only)
+        # plt.plot(sample_data[:, agent_idx+num_agents], label='Agent Feature 2')  # Vy for Agent (V only or P only)
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
         plt.title(f'{class_names[i]}')
     plt.savefig(hparams.model_dir + "Agent_feature_plots_per_class.png")
 
-
-
-    # ## PCA
-    # class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    # num_classes=len(np.unique(y_train))
-    # # # remove a class == value
-    # # value = 2
-    # # indices_to_remove = np.where(y_train == value)[0]
-    # # x_train = np.delete(x_train, indices_to_remove, axis=0)
-    # # y_train = np.delete(y_train, indices_to_remove, axis=0)
-    # x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
-    # # must have label for every timestep (same as "sequence output")
-    # train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
-    # for c in range(num_classes):
-    #     train_temp[y_train[:,0]==c]=c
-    # y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
-    # print('\n*** DATA for PCA ***')
-    # print('x_pca shape:',x_pca.shape)
-    # print('y_pca shape:',y_pca.shape)
-    # # Perform PCA
-    # pca = PCA(n_components=3)
-    # pca_result = pca.fit_transform(x_pca)
-    # # Normalize labels to map to the colormap
-    # norm = plt.Normalize(y_pca.min(), y_pca.max())
-    # # Create a custom legend
-    # unique_labels = np.unique(y_pca)
-    # handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
-    # # 2D Scatter plot of the first two principal components
-    # plt.figure(figsize=(10, 5))
-    # scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
-    # plt.legend(handles=handles, title="Classes")
-    # plt.title('2D Principle Component Analysis of Input Data')
-    # plt.xlabel('Principal Component 1')
-    # plt.ylabel('Principal Component 2')
-    # plt.savefig(hparams.model_dir + "PCA_2D.png")
-    # # 3D Scatter plot of the first three principal components
-    # fig = plt.figure(figsize=(10, 7))
-    # ax = fig.add_subplot(111, projection='3d')
-    # sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
-    # plt.legend(handles=handles, title="Classes")
-    # ax.set_title('3D Principle Component Analysis of Input Data')
-    # plt.savefig(hparams.model_dir + "PCA_3D.png")
-
+    ## PCA
+    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
+    num_classes=len(np.unique(y_train))
+    # # remove a class == value
+    # value = 2
+    # indices_to_remove = np.where(y_train == value)[0]
+    # x_train = np.delete(x_train, indices_to_remove, axis=0)
+    # y_train = np.delete(y_train, indices_to_remove, axis=0)
+    x_pca = x_train.reshape(-1, num_features)  # Reshape data to be 2D: (num_samples * num_timesteps, num_features)
+    # must have label for every timestep (same as "sequence output")
+    train_temp=np.zeros((y_train.shape[0], window), dtype=np.int8)
+    for c in range(num_classes):
+        train_temp[y_train[:,0]==c]=c
+    y_pca=train_temp.ravel() # reshape labels to be 1D: (num_samples * num_timesteps,)
+    print('\n*** DATA for PCA ***')
+    print('x_pca shape:',x_pca.shape)
+    print('y_pca shape:',y_pca.shape)
+    # Perform PCA
+    pca = PCA(n_components=3)
+    pca_result = pca.fit_transform(x_pca)
+    # Normalize labels to map to the colormap
+    norm = plt.Normalize(y_pca.min(), y_pca.max())
+    # Create a custom legend
+    unique_labels = np.unique(y_pca)
+    handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
+    # 2D Scatter plot of the first two principal components
+    plt.figure(figsize=(10, 5))
+    scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    plt.legend(handles=handles, title="Classes")
+    plt.title('2D Principle Component Analysis of Input Data')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.savefig(hparams.model_dir + "PCA_2D.png")
+    # 3D Scatter plot of the first three principal components
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(pca_result[:, 0], pca_result[:, 1], pca_result[:, 2], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
+    plt.legend(handles=handles, title="Classes")
+    ax.set_title('3D Principle Component Analysis of Input Data')
+    plt.savefig(hparams.model_dir + "PCA_3D.png")
+    
     ## TEST SET: DETERMINE NUM DATA CLASSES AND NUM RUNS (HELPS SHOW PORTION OF TEST RESULTS AT END)
     num_classes=len(np.unique(y_test)) # before restructuring labels (as required, for multilabel)
     num_runs=y_test.shape[0]
@@ -273,20 +290,6 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         train_dataset=tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(batch_size)
-        
-        ## SUBCLASS TRANSFORMER (Encoder/Decoder) ONLY
-        # if hparams.model_type == 'tr': #transformer needs dataset form (input,label),label
-        #     print("*** TRANSFORMER DATASET ***")
-            # train_dataset=make_batches(train_dataset)
-            # val_dataset=make_batches(val_dataset)
-            # test_dataset=make_batches(test_dataset)
-
-            # example=train_dataset.take(3)
-            # for element in example:
-            #     print(f'train element {element}')
-            # for element in example.as_numpy_iterator():
-            #     print(f'train element as np_it {element}')
-
 
     else: # multihead classifier (2 outputs)
         y_val=[]
@@ -297,16 +300,6 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
         val_dataset=tf.data.Dataset.from_tensor_slices((x_val, {'output_class':y_val[0], 'output_attr':y_val[1]})).batch(batch_size)
         test_dataset=tf.data.Dataset.from_tensor_slices((x_test, {'output_class':y_test[0], 'output_attr':y_test[1]})).batch(batch_size)
     
-    # print('xtrain shape:',x_train.shape)
-    # print('x-val shape:',x_val.shape)
-    # print('ytrain[0] shape:',y_train[0].shape)
-    # print('y-val[0] shape:',y_val[0].shape)
-    # print('ytrain[1] shape:',y_train[1].shape)
-    # print('y-val[1] shape:',y_val[1].shape)
-    # print('ytrain sample (first instance)',y_train[0])
-    # print('y-val[0] sample ',y_val[0][:5])
-    # print('y-val[1] sample ',y_val[1][:5,:])
-
     # removes "auto sharding" warning
     options = tf.data.Options()
     options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
@@ -324,11 +317,3 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     val_dataset = val_dataset.cache().shuffle(val_dataset.cardinality())
 
     return (train_dataset, val_dataset, test_dataset)
-
-#SUBCLASS TRANS(E/D) needs dataset in form (input,label),label
-def make_batches(ds):
-  return (ds.map(prepare_batch, tf.data.AUTOTUNE))
-def prepare_batch(data, label):
-    label_inputs=label
-    label_inputs[:,0]=-1 # replace first label with random start token
-    return (data, label_inputs), label
