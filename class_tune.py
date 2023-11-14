@@ -20,7 +20,7 @@ params.save_hparams(hparams) #create model folder and save hyperparameters list 
 
 
 ## IMPORT DATA
-x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape = import_data(hparams)
+x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape = import_data(hparams)
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)
 train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
@@ -173,7 +173,7 @@ if hparams.mode == 'train':
     # model_history = model.fit(
     #     x_train,
     #     y_train,
-    #     validation_split=hparams.train_val_split,
+    #     validation_split=hparams.val_split,
     #     epochs=hparams.num_epochs,
     #     batch_size=hparams.batch_size,
     #     verbose=0,

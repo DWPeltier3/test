@@ -38,6 +38,7 @@ def make_argparser():
     parser.add_argument("--data_path", type=str, help="location of data.npz file")
     # parser.add_argument("--real_data_path", type=str, default=None, help="location of real_data.npz file")
     parser.add_argument("--window", type=int, default=-1, help="observation window; -1 uses full window")
+    parser.add_argument("--features", type=str, help="pv=position & velocity, p=position only, v=velocity only")
 
     parser.add_argument("--model_type", type=str, help="fc=fully connect, cn=CNN, fcn=fully CNN, res=ResNet, tr=transformer")
     parser.add_argument("--output_type", type=str, help="mc=multiclass, ml=multilabel, mo=multiout")
@@ -58,7 +59,8 @@ def make_argparser():
     
     parser.add_argument("--num_epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("--batch_size", type=int, default=50, help="bacth size")
-    parser.add_argument("--train_val_split", type=float, default=0.2, help="training validation holdout percentage 0 to 1 (ie. 0.2=20%)")
+    parser.add_argument("--val_split", type=float, default=0.2, help="validation holdout percentage 0 to 1 (ie. 0.2=20%)")
+
     # parser.add_argument("--window", nargs='+', type=int, default=-1, help="observation window") #use to implement list of windows to train/evaluate
     # parser.add_argument("--l2",type=float,default=1e-4,help="l2 regularization")
     # parser.add_argument("--test_dir", type=str)

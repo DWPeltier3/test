@@ -13,6 +13,12 @@ def import_data(hparams):
     window=hparams.window
     output_type=hparams.output_type # mc=multiclass, ml=multilabel, mh=multihead
     output_length=hparams.output_length # vec=vector, seq=sequence
+    if hparams.features == 'v':
+        features = ['Vx','Vy']
+    elif hparams.features == 'p':
+        features = ['Px','Py']
+    elif hparams.features == 'pv':
+        features = ['Px','Py','Vx','Vy']
     
     ## LOAD DATA
     data=np.load(data_path)
@@ -24,21 +30,24 @@ def import_data(hparams):
     ## CHARACTERIZE DATA
     time_steps=x_train.shape[1]
     num_features=x_train.shape[2]
-    num_agents=num_features//4
+    num_features_per = len(features)
+    num_agents=num_features//num_features_per
+    num_classes=len(hparams.class_names)
+    num_attributes=len(hparams.attribute_names)
     
-    # ## TEST USING VELOCITY ONLY
-    # print('\n*** VELOCITY ONLY ***')
-    # v_idx = num_agents * 2
-    # x_train = x_train[:, :, v_idx:]
-    # x_test = x_test[:, :, v_idx:]
-    # num_features=x_train.shape[2]
-
-    # ## TEST USING POSITION ONLY
-    # print('\n*** POSITION ONLY ***')
-    # v_idx = num_agents * 2
-    # x_train = x_train[:, :, :v_idx]
-    # x_test = x_test[:, :, :v_idx]
-    # num_features=x_train.shape[2]
+    ## VELOCITY or POSITION ONLY
+    if hparams.features == 'v':
+        print('\n*** VELOCITY ONLY ***')
+        v_idx = num_agents * num_features_per
+        x_train = x_train[:, :, v_idx:]
+        x_test = x_test[:, :, v_idx:]
+        num_features=x_train.shape[2]
+    elif hparams.features == 'p':
+        print('\n*** POSITION ONLY ***')
+        v_idx = num_agents * num_features_per
+        x_train = x_train[:, :, :v_idx]
+        x_test = x_test[:, :, :v_idx]
+        num_features=x_train.shape[2]
 
     ## VISUALIZE DATA
     print('\n*** DATA ***')
@@ -46,7 +55,14 @@ def import_data(hparams):
     print('xtest shape:',x_test.shape)
     print('ytrain shape:',y_train.shape)
     print('ytest shape:',y_test.shape)
+    print('num agents:',num_agents)
     print('num features:',num_features)
+    print('num features per agent:',num_features_per)
+    print('features:',features)
+    print('num attribtues:',num_attributes)
+    print('attributes:',hparams.attribute_names)
+    print('num classes:',num_classes)
+    print('classes:',hparams.class_names)
     print('xtrain sample (1st instance, 1st time step, all features)\n',x_train[0,0,:num_features])
     print('ytrain sample (first instance)',y_train[0])
 
@@ -71,15 +87,12 @@ def import_data(hparams):
     sample_idx = 0 # first sample
     sample_data = x_train[sample_idx] # Get data for that sample
     # Plot positions and velocities over time for each agent
-    num_agents=num_features//4
     num_subplot=math.ceil(math.sqrt(num_agents))
     plt.figure(figsize=(20,20))
     for agent_idx in range(num_agents):
         plt.subplot(num_subplot,num_subplot, agent_idx + 1)
-        plt.plot(sample_data[:, agent_idx], label='Px')
-        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')
-        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')
-        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')
+        for feature in range(num_features_per):
+            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=features[feature])
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
@@ -89,34 +102,33 @@ def import_data(hparams):
     # Plots one agents' features vs. time window for all classes
     # Find the unique classes and their first index
     unique_classes, unique_indices = np.unique(y_train, return_index=True)
-    num_classes = len(unique_classes)
-    num_agents=num_features//4
     agent_idx=0
-    # Create a subplot for each class to visualize features for Agent 1
-    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    # plt.figure(figsize=(20, 5))  # one row of plots
+    # Create a subplot for each class to visualize features for Agent_idx
     plt.figure(figsize=(10, 10))  # 2x2 plots
-    for i, idx in enumerate(unique_indices):
+    num_subplot=math.ceil(math.sqrt(num_classes))
+    for i, idx in enumerate(unique_indices): #idx=first train instance of each class
         sample_data = x_train[idx]  # Get data for that sample
-        # plt.subplot(1, num_classes, i + 1) # one row of plots
-        plt.subplot(num_classes//2, num_classes//2, i + 1) #2x2 plots
-        plt.plot(sample_data[:, agent_idx], label='Px')  # Position X for Agent
-        plt.plot(sample_data[:, agent_idx+num_agents], label='Py')  # Position Y for Agent
-        plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx')  # Velocity X for Agent
-        plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy')  # Velocity Y for Agent
-        # plt.plot(sample_data[:, agent_idx], label='Agent Feature 1')  # Vx for Agent (V only or P only)
-        # plt.plot(sample_data[:, agent_idx+num_agents], label='Agent Feature 2')  # Vy for Agent (V only or P only)
+        plt.subplot(num_subplot,num_subplot, i + 1) #square matrix of subplots
+        # plt.subplot(num_classes//2, num_classes//2, i + 1) #2x2 plots
+        for feature in range(num_features_per):
+            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=features[feature])
+        # if num_features==40:
+        #     plt.plot(sample_data[:, agent_idx], label='Px') # Position X for Agent
+        #     plt.plot(sample_data[:, agent_idx+num_agents], label='Py') # Position Y for Agent
+        #     plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx') # Velocity X for Agent
+        #     plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy') # Velocity Y for Agent
+        # else:
+        #     plt.plot(sample_data[:, agent_idx], label='Agent Feature 1')
+        #     plt.plot(sample_data[:, agent_idx+num_agents], label='Agent Feature 2')
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
-        plt.title(f'{class_names[i]}')
+        plt.title(f'{hparams.class_names[i]}')
     plt.savefig(hparams.model_dir + "Agent_feature_plots_per_class.png")
 
     ## PCA
-    class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-    num_classes=len(np.unique(y_train))
-    # # remove a class == value
-    # value = 2
+    # # TO REMOVE CLASS (== value)
+    # value = 2 #2==Greddy+
     # indices_to_remove = np.where(y_train == value)[0]
     # x_train = np.delete(x_train, indices_to_remove, axis=0)
     # y_train = np.delete(y_train, indices_to_remove, axis=0)
@@ -136,7 +148,7 @@ def import_data(hparams):
     norm = plt.Normalize(y_pca.min(), y_pca.max())
     # Create a custom legend
     unique_labels = np.unique(y_pca)
-    handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{class_names[label]}") for label in unique_labels]
+    handles = [Patch(color=plt.cm.jet(norm(label)), label=f"{hparams.class_names[label]}") for label in unique_labels]
     # 2D Scatter plot of the first two principal components
     plt.figure(figsize=(10, 5))
     scatter=plt.scatter(pca_result[:, 0], pca_result[:, 1], c=y_pca, cmap='jet', norm=norm, alpha=0.5, marker=".")
@@ -154,7 +166,6 @@ def import_data(hparams):
     plt.savefig(hparams.model_dir + "PCA_3D.png")
     
     ## TEST SET: DETERMINE NUM DATA CLASSES AND NUM RUNS (HELPS SHOW PORTION OF TEST RESULTS AT END)
-    num_classes=len(np.unique(y_test)) # before restructuring labels (as required, for multilabel)
     num_runs=y_test.shape[0]
     rpc=num_runs//num_classes # runs per class
     cs_idx=[] # class start index
@@ -215,7 +226,6 @@ def import_data(hparams):
                 y_train_class=train_temp
                 y_test_class=test_temp
         if output_type=='ml' or output_type=='mh': # multilabel
-            num_attributes=2
             train_temp=np.zeros((y_train.shape[0], window, num_attributes), dtype=np.int8)
             test_temp=np.zeros((y_test.shape[0], window, num_attributes), dtype=np.int8)
             train_temp[y_train[:,0]==0]=[0,0] # Greedy
@@ -268,7 +278,7 @@ def import_data(hparams):
     print('input shape: ', input_shape)
     print('output shape: ', output_shape)
 
-    return x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape
+    return x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape
 
 
 
@@ -276,7 +286,7 @@ def import_data(hparams):
 def get_dataset(hparams, x_train, y_train, x_test, y_test):
 
     batch_size = hparams.batch_size
-    validation_split=hparams.train_val_split
+    validation_split=hparams.val_split
     num_val_samples = round(x_train.shape[0]*validation_split)
     print(f'Val Split {validation_split} and # Val Samples {num_val_samples}')
 

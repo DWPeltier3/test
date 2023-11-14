@@ -18,9 +18,11 @@ GPUs=print_resources() # computation resources available
 hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throughout script below)
 params.save_hparams(hparams) # create model folder and save hyperparameters list .txt
 
-
+## DEFINE DATA
+class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']; hparams.class_names=class_names
+attribute_names = ["COMMS", "PRONAV"]; hparams.attribute_names=attribute_names
 ## IMPORT DATA
-x_train, y_train, x_test, y_test, num_classes, cs_idx, input_shape, output_shape = import_data(hparams)
+x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape = import_data(hparams)
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)
 train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
@@ -57,7 +59,7 @@ if hparams.mode == 'train':
     # model_history = model.fit(
     #     x_train,
     #     y_train,
-    #     validation_split=hparams.train_val_split,
+    #     validation_split=hparams.val_split,
     #     epochs=hparams.num_epochs,
     #     batch_size=hparams.batch_size,
     #     verbose=0,
@@ -109,8 +111,6 @@ elif hparams.output_type == 'mh':
 # np.set_printoptions(precision=2) #show only 2 decimal places for probability comparision (does not change actual numbers)
 # print('\nprediction & label:\n',np.hstack((pred,y_test))) #probability comparison
 num_results=2 # nunber of examples to view
-class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']
-attribute_names = ["COMMS", "PRONAV"]
 print(f'\n*** TEST DATA RESULTS COMPARISON ({num_results} per class) ***')
 print('    LABELS\nTrue vs. Predicted')
 if hparams.output_type != 'mh':
@@ -137,30 +137,30 @@ print(eval) #print evaluation metrics numbers
 
 
 ## PRINT CONFUSION MATRIX
-print_cm(hparams, y_test, y_pred, class_names, attribute_names)
+print_cm(hparams, y_test, y_pred)
 
 
 ## PRINT TSNE DIMENSIONALITY REDUCTION
 if (hparams.output_length == 'vec') and (hparams.output_type != 'ml'): #could perform for each attribute separately...
     perplexity=100
-    # Input Data
-    features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
+    ## Input Data
+    tsne_input = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
     labels = y_test if hparams.output_type != 'mh' else y_test[0] # true labels
     # if hparams.output_length == 'seq':
-    #     features = x_test.reshape(-1,x_test.shape[-1]) # (batch*time, features)
+    #     tsne_input = x_test.reshape(-1,x_test.shape[-1]) # (batch*time, features)
     #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
     title="Input Data"
-    print_tsne(hparams, features, labels, class_names, title, perplexity)
-    # Model Outputs
+    print_tsne(hparams, tsne_input, labels, title, perplexity)
+    ## Model Outputs
     pre_output_layer=-4 if hparams.output_type == 'mh' else -2
     model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
-    features = model_preoutput(x_test)
+    tsne_input = model_preoutput(x_test)
     labels = y_pred if hparams.output_type != 'mh' else y_pred_class # predicted labels
     # if hparams.output_length == 'seq':
-    #     features = features.reshape(x_test.shape[0]*x_test.shape[1],-1) # (batch*time, other); **CAN'T perform np ops on tensor
+    #     tsne_input = tsne_input.reshape(x_test.shape[0]*x_test.shape[1],-1) # (batch*time, other); **CAN'T perform np ops on tensor
     #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
     title="Model Predictions"
-    print_tsne(hparams, features, labels, class_names, title, perplexity)
+    print_tsne(hparams, tsne_input, labels, title, perplexity)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)

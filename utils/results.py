@@ -52,17 +52,17 @@ def print_train_plot(hparams, model_history):
     plt.legend()
     plt.savefig(hparams.model_dir + "Training_LossAccuracy_vs_Epoch.png")
 
-def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
+def print_cm(hparams, y_test, y_pred):
     # multiclass
     if hparams.output_type == 'mc':
         if hparams.output_length == 'seq':
             y_test=y_test.reshape((-1,1)) #finds 'pseudo' CM for sequence output (every time step is prediction)
             y_pred=y_pred.reshape((-1,1)) #flatten both predictions and labels into one column vector each
         cm = confusion_matrix(y_test, y_pred)
-        disp = ConfusionMatrixDisplay(cm, display_labels=class_names)
+        disp = ConfusionMatrixDisplay(cm, display_labels=hparams.class_names)
         disp.plot()
         plt.savefig(hparams.model_dir + "conf_matrix_MC.png")
-        print(classification_report(y_test, y_pred, target_names=class_names))
+        print(classification_report(y_test, y_pred, target_names=hparams.class_names))
     # multilabel
     elif hparams.output_type == 'ml':
         if hparams.output_length == 'seq':
@@ -76,11 +76,11 @@ def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
         for label_index in range(num_labels):
             disp = ConfusionMatrixDisplay(cm[label_index], display_labels=['No', 'Yes'])
             disp.plot()
-            plt.title(f'{attribute_names[label_index]} Confusion Matrix')
-            plt.savefig(hparams.model_dir + f"conf_matrix_ML_{attribute_names[label_index]}.png")
-            print(f'\nLabel{label_index} {attribute_names[label_index]}\n',cm[label_index]) 
+            plt.title(f'{hparams.attribute_names[label_index]} Confusion Matrix')
+            plt.savefig(hparams.model_dir + f"conf_matrix_ML_{hparams.attribute_names[label_index]}.png")
+            print(f'\nLabel{label_index} {hparams.attribute_names[label_index]}\n',cm[label_index]) 
         print('\nHamming Loss:',hamming_loss(y_test, y_pred),'\n')
-        print(classification_report(y_test, y_pred, target_names=attribute_names))
+        print(classification_report(y_test, y_pred, target_names=hparams.attribute_names))
     # multihead
     elif hparams.output_type == 'mh':
         # multiclass results
@@ -88,10 +88,10 @@ def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
             y_test[0]=y_test[0].reshape((-1,1)) #finds 'pseudo' CM for sequence output (every time step is prediction)
             y_pred[0]=y_pred[0].reshape((-1,1)) #flatten predictions and labels into column vectors
         cm = confusion_matrix(y_test[0], y_pred[0])
-        disp = ConfusionMatrixDisplay(cm, display_labels=class_names)
+        disp = ConfusionMatrixDisplay(cm, display_labels=hparams.class_names)
         disp.plot()
         plt.savefig(hparams.model_dir + "conf_matrix_MC.png")
-        print(classification_report(y_test[0], y_pred[0], target_names=class_names))
+        print(classification_report(y_test[0], y_pred[0], target_names=hparams.class_names))
         # multilabel results
         if hparams.output_length == 'seq':
             y_test[1]=y_test[1].reshape((-1,2)) #finds 'pseudo' CM for sequence output (every time step is prediction)
@@ -103,11 +103,11 @@ def print_cm(hparams, y_test, y_pred, class_names=None, attribute_names=None):
         for label_index in range(num_labels):
             disp = ConfusionMatrixDisplay(cm[label_index], display_labels=['No', 'Yes'])
             disp.plot()
-            plt.title(f'{attribute_names[label_index]} Confusion Matrix')
-            plt.savefig(hparams.model_dir + f"conf_matrix_ML_{attribute_names[label_index]}.png")
-            print(f'\nLabel{label_index} {attribute_names[label_index]}\n',cm[label_index])
+            plt.title(f'{hparams.attribute_names[label_index]} Confusion Matrix')
+            plt.savefig(hparams.model_dir + f"conf_matrix_ML_{hparams.attribute_names[label_index]}.png")
+            print(f'\nLabel{label_index} {hparams.attribute_names[label_index]}\n',cm[label_index])
         print('\nHamming Loss:',hamming_loss(y_test[1], y_pred[1]),'\n')
-        print(classification_report(y_test[1], y_pred[1], target_names=attribute_names))
+        print(classification_report(y_test[1], y_pred[1], target_names=hparams.attribute_names))
 
 
 def print_cam(hparams, model, x_train):
@@ -134,7 +134,7 @@ def print_cam(hparams, model, x_train):
     num_features=x_train.shape[2]
     num_agents=num_features//4
     plt.figure(figsize=(10, 8))
-    agent_idx=1
+    agent_idx=0
     if num_features==40:
         plt.plot(sample[:, agent_idx], label='Px')
         plt.plot(sample[:, agent_idx+num_agents], label='Py')
@@ -172,11 +172,11 @@ def get_cam(model, sample, last_conv_layer_name):
     heatmap = heatmap * np.max(sample)
     return heatmap[0]
 
-def print_tsne(hparams, features, labels, class_names, title, perplexity):
-    tsne = TSNE(n_components=2, perplexity=perplexity).fit_transform(features) # set perplexity = 50-100
+def print_tsne(hparams, tsne_input, labels, title, perplexity):
+    tsne = TSNE(n_components=2, perplexity=perplexity).fit_transform(tsne_input) # set perplexity = 50-100
     scaler = MinMaxScaler() #scale between 0 and 1
-    tsne = scaler.fit_transform(tsne.reshape(-1, tsne.shape[-1])).reshape(tsne.shape) # fit amoungst features, then back to original shape
-    # print(f'features.shape {features.shape}')
+    tsne = scaler.fit_transform(tsne.reshape(-1, tsne.shape[-1])).reshape(tsne.shape) # fit amoungst tsne_input, then back to original shape
+    # print(f'tsne_input.shape {tsne_input.shape}')
     # print(f'labels.shape {labels.shape}')
     # print(f'tsne.shape {tsne.shape}')
     tx = tsne[:, 0]
@@ -189,6 +189,6 @@ def print_tsne(hparams, features, labels, class_names, title, perplexity):
         indices = [i for i, l in enumerate(labels) if idx == l]
         current_tx = np.take(tx, indices)
         current_ty = np.take(ty, indices)
-        plt.scatter(current_tx, current_ty, c=c, label=class_names[idx], alpha=0.5, marker=".")
+        plt.scatter(current_tx, current_ty, c=c, label=hparams.class_names[idx], alpha=0.5, marker=".")
     plt.legend(loc='best')
     plt.savefig(hparams.model_dir + "tSNE_"+title+".png")

@@ -1,2 +1,2 @@
 #python cache files
-.pyc
+*.pyc
