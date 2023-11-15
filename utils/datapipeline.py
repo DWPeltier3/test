@@ -30,26 +30,29 @@ def import_data(hparams):
     ## CHARACTERIZE DATA
     time_steps=x_train.shape[1]
     num_features=x_train.shape[2]
-    num_features_per = len(features)
+    num_features_per = 4
     num_agents=num_features//num_features_per
-    num_classes=len(hparams.class_names)
+    num_classes=len(hparams.class_names); hparams.num_classes=num_classes
     num_attributes=len(hparams.attribute_names)
     
     ## VELOCITY or POSITION ONLY
+    if hparams.features == 'v' or hparams.features == 'p':
+        v_idx = num_agents * 2
+        num_features_per = 2
+        num_features = num_agents * num_features_per
     if hparams.features == 'v':
         print('\n*** VELOCITY ONLY ***')
-        v_idx = num_agents * num_features_per
         x_train = x_train[:, :, v_idx:]
         x_test = x_test[:, :, v_idx:]
-        num_features=x_train.shape[2]
     elif hparams.features == 'p':
         print('\n*** POSITION ONLY ***')
-        v_idx = num_agents * num_features_per
         x_train = x_train[:, :, :v_idx]
         x_test = x_test[:, :, :v_idx]
-        num_features=x_train.shape[2]
 
     ## VISUALIZE DATA
+    hparams.num_features = num_features
+    hparams.num_features_per = num_features_per
+    hparams.num_agents = num_agents
     print('\n*** DATA ***')
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
@@ -69,15 +72,23 @@ def import_data(hparams):
     ## REDUCE OBSERVATION WINDOW, IF REQUIRED
     if window==-1 or window>time_steps: # if window = -1 (use entire window) or invalid window (too large>min_time): uses entire observation window (min_time) for all runs
         window=time_steps
-    input_length=window
-    x_train=x_train[:,:input_length]
-    x_test=x_test[:,:input_length]
+    hparams.window=window
+    x_train=x_train[:,:window]
+    x_test=x_test[:,:window]
     print('\n*** REDUCED OBSERVATION WINDOW ***')
     print('time steps available:',time_steps)
     print('window used:',window)
-    print('input length:',input_length)
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
+
+    ## PLOT VELOCITY RMSE
+    instance=6
+    if hparams.features == 'v':
+        plot_velocity_rmse(hparams,x_train[instance])
+        plot_velocity_change(hparams,x_train[instance])
+    elif hparams.features == 'pv':
+        plot_velocity_rmse(hparams, x_train[instance,:,num_agents * 2:])
+    hparams.features = features
 
     ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
     '''
@@ -108,18 +119,10 @@ def import_data(hparams):
     num_subplot=math.ceil(math.sqrt(num_classes))
     for i, idx in enumerate(unique_indices): #idx=first train instance of each class
         sample_data = x_train[idx]  # Get data for that sample
+        print(f"Feature plot idx {idx}")
         plt.subplot(num_subplot,num_subplot, i + 1) #square matrix of subplots
-        # plt.subplot(num_classes//2, num_classes//2, i + 1) #2x2 plots
         for feature in range(num_features_per):
             plt.plot(sample_data[:, agent_idx+feature*num_agents], label=features[feature])
-        # if num_features==40:
-        #     plt.plot(sample_data[:, agent_idx], label='Px') # Position X for Agent
-        #     plt.plot(sample_data[:, agent_idx+num_agents], label='Py') # Position Y for Agent
-        #     plt.plot(sample_data[:, agent_idx+2*num_agents], label='Vx') # Velocity X for Agent
-        #     plt.plot(sample_data[:, agent_idx+3*num_agents], label='Vy') # Velocity Y for Agent
-        # else:
-        #     plt.plot(sample_data[:, agent_idx], label='Agent Feature 1')
-        #     plt.plot(sample_data[:, agent_idx+num_agents], label='Agent Feature 2')
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
@@ -327,3 +330,74 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
     val_dataset = val_dataset.cache().shuffle(val_dataset.cardinality())
 
     return (train_dataset, val_dataset, test_dataset)
+
+def calculate_rmse(velocities, average_velocity):
+    # Calculate RMSE between each agent's velocity and the average swarm velocity
+    return np.sqrt(np.mean((velocities - average_velocity) ** 2, axis=0))
+
+def plot_velocity_rmse(hparams, x_data):
+    rmse_over_time = []
+    # avg_vel_over_time = []
+    for t in range(hparams.window):
+        # Extract velocities at time step t and reshape [num_agents, VxVy]
+        velocities = x_data[t, :].reshape(hparams.num_agents, 2)
+        # Calculate average velocity at time t: [1, VxVy]
+        average_velocity = np.mean(velocities, axis=0, keepdims=True)
+        # Compute RMSE
+        rmse = calculate_rmse(velocities, average_velocity)
+        rmse_over_time.append(np.mean(rmse))
+        # avg_vel_over_time.append(np.mean(average_velocity))
+        if t==0:
+            # a=np.array([[3,4],[5,6]])
+            # b=np.array([[1,2]])
+            # c=a-b
+            # print(f"a {a}")
+            # print(f"b {b}")
+            # print(f"c {c}")
+            print(f"\nvelocities\n {velocities}")
+            print(f"\navg velocity\n {average_velocity}")
+            print(f"RMSE {rmse}")
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(rmse_over_time, label='Velocity RMSE')
+    # plt.plot(avg_vel_over_time, label='Velocity Avg')
+    plt.xlabel('Time Step')
+    plt.ylabel('RMSE')
+    plt.title('Velocity RMSE over Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "Velocity_RMSE_over_Time.png")
+
+def plot_velocity_change(hparams,x_data):
+    # Reshape velocities for one instance assuming the format is [time, agents * features_per]
+    velocities = x_data.reshape(hparams.window, hparams.num_agents, 2)
+    
+    # Calculate the change in velocity components between each time step
+    delta_velocities = np.diff(velocities, axis=0)
+    # Calculate the magnitude of the change for plotting
+    delta_velocities_magnitude = np.linalg.norm(delta_velocities, axis=2)
+    # Sum the magnitude of the change for all agents at each time step
+    total_delta_velocities_magnitude = np.sum(delta_velocities_magnitude, axis=1)
+    print(f"\nvelocities shape {velocities.shape}\n {velocities[:2,:,:]}")
+    print(f"\ndelta vel shape {delta_velocities.shape}\n {delta_velocities[0]}")
+    print(f"\ndelta vel mag shape {delta_velocities_magnitude.shape} {delta_velocities_magnitude[0]}")
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    for agent in range(hparams.num_agents):
+        plt.plot(delta_velocities_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
+    # Plotting total velocity change
+    plt.plot(total_delta_velocities_magnitude, label='Total ΔV', color='black', linewidth=2, linestyle='--')
+    plt.xlabel('Time Step')
+    plt.ylabel('Change in Velocity Magnitude')
+    plt.title('Change in Velocity Over Time for Each Agent')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "Velocity_delta_over_Time.png")
+
+    # # Plotting
+    # plt.figure(figsize=(10, 6))
+    # for agent in range(hparams.num_agents):
+    #     plt.plot(delta_velocities_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
+    # plt.xlabel('Time Step')
+    # plt.ylabel('Change in Velocity Magnitude')
+    # plt.title('Change in Velocity Over Time for Each Agent')
+    # plt.legend()
+    # plt.savefig(hparams.model_dir + "Velocity_delta_over_Time.png")

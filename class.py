@@ -18,7 +18,7 @@ GPUs=print_resources() # computation resources available
 hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throughout script below)
 params.save_hparams(hparams) # create model folder and save hyperparameters list .txt
 
-## DEFINE DATA
+## DEFINE LABELS
 class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']; hparams.class_names=class_names
 attribute_names = ["COMMS", "PRONAV"]; hparams.attribute_names=attribute_names
 ## IMPORT DATA
@@ -26,7 +26,7 @@ x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape = import_dat
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)
 train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
-
+'''
 ## BUILD & COMPILE MODEL
 if hparams.mode == 'train':
     loss_weights=None #  single output head
@@ -171,3 +171,4 @@ if hparams.model_type=='fcn':
 
 ## PRINT ELAPSE TIME
 elapse_time(start)
+'''

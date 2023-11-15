@@ -116,7 +116,7 @@ def print_cam(hparams, model, x_train):
     that have a Global Average Pooling layer (ex: Fully Convolutional Network)'''
     
     # select one training sample (engagement) to analyze
-    sample = x_train[20]
+    sample = x_train[6]
     # Get the class activation map for that sample
     last_cov_layer=-5 if hparams.output_type == 'mh' else -3 # multihead v2 has 2 extra layers at end
     heatmap = get_cam(model, sample, model.layers[last_cov_layer].name)
@@ -131,18 +131,10 @@ def print_cam(hparams, model, x_train):
     plt.title(f'Class Activation Map vs. All Input Features')
     plt.savefig(hparams.model_dir + "CAM_all.png")
     # ONE AGENT: Plot the heatmap values along with the time series features for one agent in that sample
-    num_features=x_train.shape[2]
-    num_agents=num_features//4
     plt.figure(figsize=(10, 8))
     agent_idx=0
-    if num_features==40:
-        plt.plot(sample[:, agent_idx], label='Px')
-        plt.plot(sample[:, agent_idx+num_agents], label='Py')
-        plt.plot(sample[:, agent_idx+2*num_agents], label='Vx')
-        plt.plot(sample[:, agent_idx+3*num_agents], label='Vy')
-    else:
-        plt.plot(sample[:, agent_idx], label='Agent Feature 1')
-        plt.plot(sample[:, agent_idx+num_agents], label='Agent Feature 2')
+    for feature in range(hparams.num_features_per):
+        plt.plot(sample[:, agent_idx+feature*hparams.num_agents], label=hparams.features[feature])
     plt.plot(heatmap, label='CAM [importance]', c='red', lw=5, linestyle='dashed')
     plt.xlabel('Time Step')
     plt.ylabel('Feature Value [normalized]')
@@ -167,7 +159,7 @@ def get_cam(model, sample, last_conv_layer_name):
     # Multiply pooled gradients (importance) with the conv layer output, then average across all feature maps, to get the 2D heatmap
     # Heatmap highlights areas that most influence models prediction
     heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
-    # Normalize the heatmap (between 0 and largest feature value)
+    # Normalize the heatmap (between 0 and largest feature value in sample)
     heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
     heatmap = heatmap * np.max(sample)
     return heatmap[0]
