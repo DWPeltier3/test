@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=swarm-class
-#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class_FCNvonly.txt
+#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class_FCNvonly100v100.txt
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:0
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00
@@ -18,8 +18,8 @@ source activate swarm
 python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class11-01_11-08-31_RT_TRVmhWF_rs/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCNvonly/" \
---data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10.npz" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class$(date +%m-%d_%H-%M-%S)_FCNvonly100v100/" \
+--data_path="/home/donald.peltier/swarm/data/data_100v100_r4800s_4cl_a10_ns.npz" \
 --window=-1 \
 --features="v" \
 --model_type="fcn" \

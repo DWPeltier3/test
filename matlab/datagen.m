@@ -9,8 +9,8 @@ clear all;
 seedrange=1200; % # of samples (runs) to collect (per algorithm)
 
 %% Simulation Inputs
-N_attacker=10;     % number of attackers
-N_defender=10;     % number of defenders (agents that kill; "attackers" for ONR)
+N_attacker=100;     % number of attackers
+N_defender=100;     % number of defenders (agents that kill; "attackers" for ONR)
 Defender_v_max=1;   % defender velocity maximum
 do_plot=false;
 final_fraction=0;   % final proportion of attackers remaining vs. #defenders

@@ -3,6 +3,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from matplotlib.patches import Patch
+from savevariables import append_to_csv
 import math
 
 ## IMPORT DATA
@@ -14,12 +15,13 @@ def import_data(hparams):
     output_type=hparams.output_type # mc=multiclass, ml=multilabel, mh=multihead
     output_length=hparams.output_length # vec=vector, seq=sequence
     if hparams.features == 'v':
-        features = ['Vx','Vy']
+        feature_names = ['Vx','Vy']
     elif hparams.features == 'p':
-        features = ['Px','Py']
+        feature_names = ['Px','Py']
     elif hparams.features == 'pv':
-        features = ['Px','Py','Vx','Vy']
-    
+        feature_names = ['Px','Py','Vx','Vy']
+    hparams.feature_names = feature_names
+
     ## LOAD DATA
     data=np.load(data_path)
     x_train = data['x_train']
@@ -61,7 +63,7 @@ def import_data(hparams):
     print('num agents:',num_agents)
     print('num features:',num_features)
     print('num features per agent:',num_features_per)
-    print('features:',features)
+    print('feature names:',feature_names)
     print('num attribtues:',num_attributes)
     print('attributes:',hparams.attribute_names)
     print('num classes:',num_classes)
@@ -88,7 +90,7 @@ def import_data(hparams):
         plot_velocity_change(hparams,x_train[instance])
     elif hparams.features == 'pv':
         plot_velocity_rmse(hparams, x_train[instance,:,num_agents * 2:])
-    hparams.features = features
+    
 
     ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
     '''
@@ -103,7 +105,7 @@ def import_data(hparams):
     for agent_idx in range(num_agents):
         plt.subplot(num_subplot,num_subplot, agent_idx + 1)
         for feature in range(num_features_per):
-            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=features[feature])
+            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=feature_names[feature])
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
@@ -122,7 +124,7 @@ def import_data(hparams):
         print(f"Feature plot idx {idx}")
         plt.subplot(num_subplot,num_subplot, i + 1) #square matrix of subplots
         for feature in range(num_features_per):
-            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=features[feature])
+            plt.plot(sample_data[:, agent_idx+feature*num_agents], label=feature_names[feature])
         plt.xlabel('Time Step')
         plt.ylabel('Feature Value [normalized]')
         plt.legend()
@@ -337,7 +339,7 @@ def calculate_rmse(velocities, average_velocity):
 
 def plot_velocity_rmse(hparams, x_data):
     rmse_over_time = []
-    # avg_vel_over_time = []
+    avg_vel_over_time = []
     for t in range(hparams.window):
         # Extract velocities at time step t and reshape [num_agents, VxVy]
         velocities = x_data[t, :].reshape(hparams.num_agents, 2)
@@ -346,7 +348,7 @@ def plot_velocity_rmse(hparams, x_data):
         # Compute RMSE
         rmse = calculate_rmse(velocities, average_velocity)
         rmse_over_time.append(np.mean(rmse))
-        # avg_vel_over_time.append(np.mean(average_velocity))
+        avg_vel_over_time.append(np.mean(average_velocity))
         if t==0:
             # a=np.array([[3,4],[5,6]])
             # b=np.array([[1,2]])
@@ -357,6 +359,9 @@ def plot_velocity_rmse(hparams, x_data):
             print(f"\nvelocities\n {velocities}")
             print(f"\navg velocity\n {average_velocity}")
             print(f"RMSE {rmse}")
+    # Save variables for post processing
+    append_to_csv(avg_vel_over_time, hparams.model_dir + "variables.csv", "Average Velocity")
+    append_to_csv(rmse_over_time, hparams.model_dir + "variables.csv", "RMSE Over Time")
     # Plotting
     plt.figure(figsize=(10, 6))
     plt.plot(rmse_over_time, label='Velocity RMSE')
@@ -370,7 +375,6 @@ def plot_velocity_rmse(hparams, x_data):
 def plot_velocity_change(hparams,x_data):
     # Reshape velocities for one instance assuming the format is [time, agents * features_per]
     velocities = x_data.reshape(hparams.window, hparams.num_agents, 2)
-    
     # Calculate the change in velocity components between each time step
     delta_velocities = np.diff(velocities, axis=0)
     # Calculate the magnitude of the change for plotting
@@ -380,24 +384,23 @@ def plot_velocity_change(hparams,x_data):
     print(f"\nvelocities shape {velocities.shape}\n {velocities[:2,:,:]}")
     print(f"\ndelta vel shape {delta_velocities.shape}\n {delta_velocities[0]}")
     print(f"\ndelta vel mag shape {delta_velocities_magnitude.shape} {delta_velocities_magnitude[0]}")
+    # Save variables for post processing
+    append_to_csv(velocities, hparams.model_dir + "variables.csv", "Velocity Data")
+    append_to_csv(delta_velocities, hparams.model_dir + "variables.csv", "Velocity Delta Data")
+    append_to_csv(delta_velocities_magnitude, hparams.model_dir + "variables.csv", "Velocity Delta Magnitude Data")
+    append_to_csv(total_delta_velocities_magnitude, hparams.model_dir + "variables.csv", "Total Velocity Del Mag Data")
     # Plotting
     plt.figure(figsize=(10, 6))
+    # Plot each agent velocity change magnitude
     for agent in range(hparams.num_agents):
         plt.plot(delta_velocities_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
-    # Plotting total velocity change
+    # Plot total velocity change magnitude
     plt.plot(total_delta_velocities_magnitude, label='Total ΔV', color='black', linewidth=2, linestyle='--')
     plt.xlabel('Time Step')
     plt.ylabel('Change in Velocity Magnitude')
-    plt.title('Change in Velocity Over Time for Each Agent')
+    plt.title('Velocity Change Magnitude (Agent & Total) vs. Time')
     plt.legend()
     plt.savefig(hparams.model_dir + "Velocity_delta_over_Time.png")
 
-    # # Plotting
-    # plt.figure(figsize=(10, 6))
-    # for agent in range(hparams.num_agents):
-    #     plt.plot(delta_velocities_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
-    # plt.xlabel('Time Step')
-    # plt.ylabel('Change in Velocity Magnitude')
-    # plt.title('Change in Velocity Over Time for Each Agent')
-    # plt.legend()
-    # plt.savefig(hparams.model_dir + "Velocity_delta_over_Time.png")
+
+

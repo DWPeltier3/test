@@ -20,7 +20,7 @@ scaling_factor = args.scaling_factor
 print(f"Scaling factor: {scaling_factor}")
 
 ## IMPORT MATLAB matrix as np array
-data_folder='/home/donald.peltier/swarm/data/historical/matlab/10v10_r4800_c4_a10_ns/' # folder that contains .mat files
+data_folder='/home/donald.peltier/swarm/data/mat_files/100v100_r4800_c4_a10_ns/' # folder that contains .mat files
 data1=data_folder+'data_g.mat'
 data2=data_folder+'data_gp.mat'
 data3=data_folder+'data_a.mat'
@@ -62,32 +62,32 @@ print('num features:',num_feat)
 print('max time:',max_time)
 print('min time:',min_time)
 
-# ## PLOT TIME STATISTICS
-# # Calculate the mean
-# mean_time = statistics.mean(time)
-# # Calculate the variance
-# variance_value = statistics.variance(time)
-# print(f"The mean is: {mean_time}")
-# print(f"The variance is: {variance_value}")
-# # Create a histogram from the time data
-# plt.hist(time, bins=50, color='blue', edgecolor='black')
-# # Set the x-axis major ticks to 100 and minor ticks to 20
-# major_ticks = range(0, max(time) + 100, 100)
-# minor_ticks = range(0, max(time) + 20, 20)
-# # Configure major and minor ticks
-# plt.xticks(major_ticks)
-# plt.gca().set_xticks(minor_ticks, minor=True)
-# # Include grid lines for major ticks
-# plt.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
-# plt.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
-# # Label the mean line
-# plt.axvline(mean_time, color='red', linestyle='dashed', linewidth=2)
-# plt.text(mean_time+2, plt.ylim()[1]*0.9, f'mean={mean_time:.0f}', color='red')
-# plt.xlabel('Time Steps')
-# plt.ylabel('Frequency')
-# plt.title('Histogram of Time Steps')
-# # Show the plot
-# plt.savefig("/home/donald.peltier/swarm/code/matlab/" + "Time_histogram.png")
+## PLOT TIME STATISTICS
+# Calculate the mean
+mean_time = statistics.mean(time)
+# Calculate the variance
+variance_value = statistics.variance(time)
+print(f"The mean is: {mean_time}")
+print(f"The variance is: {variance_value}")
+# Create a histogram from the time data
+plt.hist(time, bins=50, color='blue', edgecolor='black')
+# Set the x-axis major ticks to 100 and minor ticks to 20
+major_ticks = range(0, max(time) + 100, 100)
+minor_ticks = range(0, max(time) + 20, 20)
+# Configure major and minor ticks
+plt.xticks(major_ticks)
+plt.gca().set_xticks(minor_ticks, minor=True)
+# Include grid lines for major ticks
+plt.grid(which='major', linestyle='-', linewidth='0.5', color='grey')
+plt.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
+# Label the mean line
+plt.axvline(mean_time, color='red', linestyle='dashed', linewidth=2)
+plt.text(mean_time+2, plt.ylim()[1]*0.9, f'mean={mean_time:.0f}', color='red')
+plt.xlabel('Time Steps')
+plt.ylabel('Frequency')
+plt.title('Histogram of Engagement Total Time Steps')
+# Show the plot
+plt.savefig("/home/donald.peltier/swarm/code/matlab/" + "Time_histogram.png")
 
 ## CREATE PYTHON DATA ARRAY
 # MIN TIME (truncate each run to "min time" length; prevents ragged array, all instances have same time length)
@@ -102,7 +102,7 @@ print('data shape:',data.shape)
 label = np.vstack((np.zeros((run1,1),dtype=int), np.ones((run2,1),dtype=int), 2*np.ones((run3,1),dtype=int), 3*np.ones((run4,1),dtype=int))) #np.ones default type is float64
 print('label shape', label.shape)
 print('label sample', label[c1si:c1si+5],'\n', label[c2si:c2si+5],'\n', label[c3si:c3si+5],'\n', label[c4si:c4si+5])
-
+'''
 ## ADD NOISE TO DATA (MEASUREMENTS)
 # Define your noise scales:
 # scaling_factor=0.02 # noise percentage of measurement
@@ -165,7 +165,7 @@ def add_noise(data, noise_scale_position, noise_scale_velocity):
     return noisy_data
 # Add noise to your data
 data = add_noise(data, noise_scale_position, noise_scale_velocity)
-
+'''
 ## SPLIT DATA (TRAIN & TEST)
 test_percentage=0.25
 x_c1train, x_c1test, y_c1train, y_c1test = train_test_split(data[:c2si], label[:c2si], test_size=test_percentage, random_state=0) #split each category separately (equal representation during training and testing)
@@ -213,7 +213,9 @@ print('\nx TEST SCALED example (first instance, firt time step):\n',x_test[0,0])
 ## SAVE DATASET
 post=int(round(scaling_factor*100))
 path='/home/donald.peltier/swarm/data/'
-filename=f'data_10v10_r4800s_4cl_a10_noise{post}.npz' # BvR: #blue v #red; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start
+# DvA: #def v #att; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start, ns=normal start
+# filename=f'data_100v100_r4800s_4cl_a10_noise{post}.npz'
+filename='data_100v100_r4800s_4cl_a10_ns.npz'
 full_path = os.path.join(path, filename)
 np.savez(full_path, x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)
 print(f"saved {post} data in {full_path}")

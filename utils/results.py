@@ -4,6 +4,7 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+from savevariables import append_to_csv
 
 def print_train_plot(hparams, model_history):
     ## TRAINING CURVE: Loss & Accuracy vs. EPOCH
@@ -116,10 +117,12 @@ def print_cam(hparams, model, x_train):
     that have a Global Average Pooling layer (ex: Fully Convolutional Network)'''
     
     # select one training sample (engagement) to analyze
-    sample = x_train[6]
+    sample = x_train[6] # 6 = Auction+
     # Get the class activation map for that sample
     last_cov_layer=-5 if hparams.output_type == 'mh' else -3 # multihead v2 has 2 extra layers at end
     heatmap = get_cam(model, sample, model.layers[last_cov_layer].name)
+    # Save CAM variable for postprocessing
+    append_to_csv(heatmap, hparams.model_dir + "variables.csv", "CAM Data")
     ## Visualize Class Activation Map
     # ALL FEATURES: Plot the heatmap values along with the time series data for all features (all agents) in that sample
     plt.figure(figsize=(10, 8))
@@ -134,7 +137,7 @@ def print_cam(hparams, model, x_train):
     plt.figure(figsize=(10, 8))
     agent_idx=0
     for feature in range(hparams.num_features_per):
-        plt.plot(sample[:, agent_idx+feature*hparams.num_agents], label=hparams.features[feature])
+        plt.plot(sample[:, agent_idx+feature*hparams.num_agents], label=hparams.feature_names[feature])
     plt.plot(heatmap, label='CAM [importance]', c='red', lw=5, linestyle='dashed')
     plt.xlabel('Time Step')
     plt.ylabel('Feature Value [normalized]')

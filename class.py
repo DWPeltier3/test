@@ -26,7 +26,7 @@ x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape = import_dat
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)
 train_dataset, val_dataset, test_dataset = get_dataset(hparams, x_train, y_train, x_test, y_test)
 
-'''
+
 ## BUILD & COMPILE MODEL
 if hparams.mode == 'train':
     loss_weights=None #  single output head
@@ -171,4 +171,3 @@ if hparams.model_type=='fcn':
 
 ## PRINT ELAPSE TIME
 elapse_time(start)
-'''
