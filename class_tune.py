@@ -259,24 +259,18 @@ print_cm(hparams, y_test, y_pred, class_names, attribute_names)
 ## PRINT TSNE DIMENSIONALITY REDUCTION
 if (hparams.output_length == 'vec') and (hparams.output_type != 'ml'): #could perform for each attribute separately...
     perplexity=100
-    # Input Data
-    features = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
+    ## Input Data
+    tsne_input = x_test.reshape(x_test.shape[0],-1) # Reshape to (batch, time*feature); TSNE requires <=2 dim 
     labels = y_test if hparams.output_type != 'mh' else y_test[0] # true labels
-    # if hparams.output_length == 'seq':
-    #     features = x_test.reshape(-1,x_test.shape[-1]) # (batch*time, features)
-    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
     title="Input Data"
-    print_tsne(hparams, features, labels, class_names, title, perplexity)
-    # Model Outputs
+    print_tsne(hparams, tsne_input, labels, title, perplexity)
+    ## Model Outputs
     pre_output_layer=-4 if hparams.output_type == 'mh' else -2
     model_preoutput = tf.keras.Model(inputs=model.input, outputs=model.layers[pre_output_layer].output)
-    features = model_preoutput(x_test)
+    tsne_input = model_preoutput(x_test)
     labels = y_pred if hparams.output_type != 'mh' else y_pred_class # predicted labels
-    # if hparams.output_length == 'seq':
-    #     features = features.reshape(x_test.shape[0]*x_test.shape[1],-1) # (batch*time, other); **CAN'T perform np ops on tensor
-    #     labels = labels.reshape(-1,1) # (batch*time,1) every time step is prediction
     title="Model Predictions"
-    print_tsne(hparams, features, labels, class_names, title, perplexity)
+    print_tsne(hparams, tsne_input, labels, title, perplexity)
 
 
 ## PRINT CLASS ACTIVATION MAPS (if FCN model)

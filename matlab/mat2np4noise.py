@@ -11,14 +11,16 @@ import os
 # Initialize parser
 parser = argparse.ArgumentParser(description="Scale input values")
 # Add arguments
-parser.add_argument('--swarm_size', type=int, required=True,
-                    help='swarm size')
+parser.add_argument('--scaling_factor', type=float, required=True,
+                    help='The scaling factor for the computation.')
 # Parse the arguments
 args = parser.parse_args()
-swarm_size = args.swarm_size
+# Use args.scaling_factor as needed in your script
+scaling_factor = args.scaling_factor
+print(f"Scaling factor: {scaling_factor}")
 
 ## IMPORT MATLAB matrix as np array
-data_folder=f"/home/donald.peltier/swarm/data/mat_files/{swarm_size}v{swarm_size}_r4800_c4_a10/" # folder that contains .mat files
+data_folder='/home/donald.peltier/swarm/data/mat_files/100v100_r4800_c4_a10_ns/' # folder that contains .mat files
 data1=data_folder+'data_g.mat'
 data2=data_folder+'data_gp.mat'
 data3=data_folder+'data_a.mat'
@@ -85,7 +87,7 @@ plt.xlabel('Time Steps')
 plt.ylabel('Frequency')
 plt.title('Histogram of Engagement Total Time Steps')
 # Show the plot
-plt.savefig("/home/donald.peltier/swarm/code/matlab/" + f"Time_histogram_{swarm_size}.png")
+plt.savefig("/home/donald.peltier/swarm/code/matlab/" + "Time_histogram.png")
 
 ## CREATE PYTHON DATA ARRAY
 # MIN TIME (truncate each run to "min time" length; prevents ragged array, all instances have same time length)
@@ -100,8 +102,70 @@ print('data shape:',data.shape)
 label = np.vstack((np.zeros((run1,1),dtype=int), np.ones((run2,1),dtype=int), 2*np.ones((run3,1),dtype=int), 3*np.ones((run4,1),dtype=int))) #np.ones default type is float64
 print('label shape', label.shape)
 print('label sample', label[c1si:c1si+5],'\n', label[c2si:c2si+5],'\n', label[c3si:c3si+5],'\n', label[c4si:c4si+5])
+'''
+## ADD NOISE TO DATA (MEASUREMENTS)
+# Define your noise scales:
+# scaling_factor=0.02 # noise percentage of measurement
+noise_scale_position = 40*scaling_factor  # position exist 0-40
+noise_scale_velocity = 1*scaling_factor  # velocity exist 0-1
+print(f"pos_scale {noise_scale_position} and vel_scale {noise_scale_velocity}")
+np.random.seed(0) # define seed for Numpy random
 
+# def add_noise(data, noise_scale_position, noise_scale_velocity):
+#     # Assuming the first 20 features are position (Px, Py), and the next 20 are velocity
+#     position_features = data[..., :20]  # Replace 20 with the correct number of position features
+#     velocity_features = data[..., 20:]  # Replace 20 with the correct starting index for velocity features
+#     # Generate noise
+#     position_noise = np.random.normal(0, noise_scale_position, position_features.shape)
+#     velocity_noise = np.random.normal(0, noise_scale_velocity, velocity_features.shape)
+#     # Check the noise mean for a single feature across all time steps in the first batch
+#     feature_index = 0  # Feature index to check
+#     mean_feature_noise = np.mean(position_noise[0, :, feature_index])
+#     print(f"Mean of position noise for batch 0, feature {feature_index} across all time steps:", mean_feature_noise)
+#     # Add noise to features
+#     noisy_position_features = position_features + position_noise
+#     noisy_velocity_features = velocity_features + velocity_noise
+#     # Combine the features back into the original data structure
+#     noisy_data = np.concatenate((noisy_position_features, noisy_velocity_features), axis=-1)
+#     return noisy_data
+# # Add noise to your data
+# data = add_noise(data, noise_scale_position, noise_scale_velocity)
 
+def add_noise(data, noise_scale_position, noise_scale_velocity):
+    # Parameters
+    num_batches = data.shape[0]  # Number of batches in your data
+    num_timesteps = data.shape[1]  # Number of time steps in your data
+    num_position_features = data.shape[2]//2  # Number of position features
+    num_velocity_features = data.shape[2]//2  # Number of velocity features
+    total_features = num_position_features + num_velocity_features
+    # print(f"batches {num_batches}, timesteps {num_timesteps}, pos_feat {num_position_features}, vel_feat {num_velocity_features}, total_feat {total_features}")
+    # Generate noise for each feature and batch
+    noise_tensor = np.zeros((num_batches, num_timesteps, total_features))
+    for batch in range(num_batches):
+        for feature in range(total_features):
+            if feature < num_position_features:
+                # Generate position noise for this feature across all time steps
+                noise_vector = np.random.normal(0, noise_scale_position, num_timesteps)
+            else:
+                # Generate velocity noise for this feature across all time steps
+                noise_vector = np.random.normal(0, noise_scale_velocity, num_timesteps)
+            # Subtract the mean to ensure zero mean
+            noise_vector -= np.mean(noise_vector)
+            # Assign this noise vector to the appropriate place in the noise tensor
+            noise_tensor[batch, :, feature] = noise_vector
+    # Add the noise tensor to the original data
+    noisy_data = data + noise_tensor
+    # Now you can check if the mean is zero for any batch and feature across time
+    batch_index = 0
+    feature_index = 0  # Change as needed
+    # print(f"Shape of noise tensor {noise_tensor.shape}")
+    # print(f"Sample of Px noise [B0,F0]: {noise_tensor[batch_index, :, feature_index]}")
+    print(f"Mean noise for batch {batch_index}, feature {feature_index}:", np.mean(noise_tensor[batch_index, :, feature_index]))
+    # print(f"Noisy data sample for batch {batch_index}, feature {feature_index}:", noisy_data[batch_index, :, feature_index])
+    return noisy_data
+# Add noise to your data
+data = add_noise(data, noise_scale_position, noise_scale_velocity)
+'''
 ## SPLIT DATA (TRAIN & TEST)
 test_percentage=0.25
 x_c1train, x_c1test, y_c1train, y_c1test = train_test_split(data[:c2si], label[:c2si], test_size=test_percentage, random_state=0) #split each category separately (equal representation during training and testing)
@@ -147,9 +211,11 @@ x_test = scaler.transform(x_test.reshape(-1, x_test.shape[-1])).reshape(x_test.s
 print('\nx TEST SCALED example (first instance, firt time step):\n',x_test[0,0])
 
 ## SAVE DATASET
+post=int(round(scaling_factor*100))
 path='/home/donald.peltier/swarm/data/'
 # DvA: #def v #att; 4cl=4 classes; r=# runs; s=scaled; a10=acceleration 10 steps; rs=random start, ns=normal start
-filename=f'data_{swarm_size}v{swarm_size}_r4800s_4cl_a10.npz'
+# filename=f'data_100v100_r4800s_4cl_a10_noise{post}.npz'
+filename='data_100v100_r4800s_4cl_a10_ns.npz'
 full_path = os.path.join(path, filename)
 np.savez(full_path, x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)
-print(f"saved data in {full_path}")
+print(f"saved {post} data in {full_path}")

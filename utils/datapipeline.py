@@ -3,7 +3,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from matplotlib.patches import Patch
-from savevariables import append_to_csv
+from utils.savevariables import append_to_csv
 import math
 
 ## IMPORT DATA
@@ -38,8 +38,8 @@ def import_data(hparams):
     num_attributes=len(hparams.attribute_names)
     
     ## VELOCITY or POSITION ONLY
+    v_idx = num_agents * 2
     if hparams.features == 'v' or hparams.features == 'p':
-        v_idx = num_agents * 2
         num_features_per = 2
         num_features = num_agents * num_features_per
     if hparams.features == 'v':
@@ -83,14 +83,13 @@ def import_data(hparams):
     print('xtrain shape:',x_train.shape)
     print('xtest shape:',x_test.shape)
 
-    ## PLOT VELOCITY RMSE
-    instance=6
-    if hparams.features == 'v':
-        plot_velocity_rmse(hparams,x_train[instance])
-        plot_velocity_change(hparams,x_train[instance])
-    elif hparams.features == 'pv':
-        plot_velocity_rmse(hparams, x_train[instance,:,num_agents * 2:])
-    
+    ## PLOT QUANTITIES TO RELATE TO CAM (only pass ONE instance VELOCITY feautures)
+    if model_type == 'fcn':
+        instance=6
+        if hparams.features == 'v':
+            plotting_function(hparams,x_train[instance])
+        elif hparams.features == 'pv':
+            plotting_function(hparams, x_train[instance,:,v_idx:])
 
     ## TIME SERIES PLOTS (VISUALIZE PATTERNS)
     '''
@@ -121,7 +120,7 @@ def import_data(hparams):
     num_subplot=math.ceil(math.sqrt(num_classes))
     for i, idx in enumerate(unique_indices): #idx=first train instance of each class
         sample_data = x_train[idx]  # Get data for that sample
-        print(f"Feature plot idx {idx}")
+        print(f"Feature plot {i} {hparams.class_names[i]} = idx {idx}")
         plt.subplot(num_subplot,num_subplot, i + 1) #square matrix of subplots
         for feature in range(num_features_per):
             plt.plot(sample_data[:, agent_idx+feature*num_agents], label=feature_names[feature])
@@ -333,74 +332,138 @@ def get_dataset(hparams, x_train, y_train, x_test, y_test):
 
     return (train_dataset, val_dataset, test_dataset)
 
-def calculate_rmse(velocities, average_velocity):
-    # Calculate RMSE between each agent's velocity and the average swarm velocity
-    return np.sqrt(np.mean((velocities - average_velocity) ** 2, axis=0))
+def calculate_rmse(agent_quantities, average_quantities):
+    # Calculate RMSE between each agent's quantity [#a,features] and the average swarm quantity [1,f]
+    return np.sqrt(np.mean((agent_quantities - average_quantities) ** 2, axis=0))
 
-def plot_velocity_rmse(hparams, x_data):
-    rmse_over_time = []
+def plotting_function(hparams, x_data):
+    '''Given a single instance (engagement), calculates, stores, and plots several quantities:
+    Δ Velocity, Δ Acceleration, RMSE Vel, Accel, and Heading 
+    '''
+
+    ## Reshape velocities for one instance assuming the format is [time, agents * features_per]
+    velocities = x_data.reshape(hparams.window, hparams.num_agents, 2) #[t,#a,VxVy]
+
+    ## Compute Heading Angles
+    heading_angles = np.arctan2(velocities[..., 1], velocities[..., 0])  #[t, #a]
+    average_heading_angle = np.mean(heading_angles, axis=1)  #[t]
+
+    ## Compute changes (derivatives)
+    # Calculate the change in velocity components (slope=accel) between each time step and magnitude
+    delta_velocities = np.diff(velocities, axis=0) #[t-1,#a,2]
+    delta_velocities_magnitude = np.linalg.norm(delta_velocities, axis=2) #[t-1,#a]
+    # Calculate the change in acceleration components (accel slope) between each time step and magnitude
+    delta_accelerations = np.diff(delta_velocities, axis=0) #[t-1,#a,2]
+    delta_accelerations_magnitude = np.linalg.norm(delta_accelerations, axis=2) #[t-1,#a]
+    # Calculate the change in heading components (slope=accel) between each time step and magnitude
+    delta_heading = np.diff(heading_angles, axis=0) #[t-1,#a]
+    delta_heading_magnitude = np.absolute(delta_heading) #[t-1,#a]
+    # Sum the magnitude of the changes for all agents at each time step
+    total_delta_velocities_magnitude = np.sum(delta_velocities_magnitude, axis=1) #[t-1]
+    total_delta_accelerations_magnitude = np.sum(delta_accelerations_magnitude, axis=1) #[t-1]
+    total_delta_heading = np.sum(delta_heading_magnitude, axis=1) #[t-1]
+    
+    ## Compute RMSE
+    velocity_rmse = []
+    acceleration_rmse = []
     avg_vel_over_time = []
+    avg_accel_over_time = []
+    heading_angle_rmse = []
     for t in range(hparams.window):
-        # Extract velocities at time step t and reshape [num_agents, VxVy]
-        velocities = x_data[t, :].reshape(hparams.num_agents, 2)
-        # Calculate average velocity at time t: [1, VxVy]
-        average_velocity = np.mean(velocities, axis=0, keepdims=True)
-        # Compute RMSE
-        rmse = calculate_rmse(velocities, average_velocity)
-        rmse_over_time.append(np.mean(rmse))
-        avg_vel_over_time.append(np.mean(average_velocity))
-        if t==0:
-            # a=np.array([[3,4],[5,6]])
-            # b=np.array([[1,2]])
-            # c=a-b
-            # print(f"a {a}")
-            # print(f"b {b}")
-            # print(f"c {c}")
-            print(f"\nvelocities\n {velocities}")
-            print(f"\navg velocity\n {average_velocity}")
-            print(f"RMSE {rmse}")
-    # Save variables for post processing
-    append_to_csv(avg_vel_over_time, hparams.model_dir + "variables.csv", "Average Velocity")
-    append_to_csv(rmse_over_time, hparams.model_dir + "variables.csv", "RMSE Over Time")
-    # Plotting
-    plt.figure(figsize=(10, 6))
-    plt.plot(rmse_over_time, label='Velocity RMSE')
-    # plt.plot(avg_vel_over_time, label='Velocity Avg')
-    plt.xlabel('Time Step')
-    plt.ylabel('RMSE')
-    plt.title('Velocity RMSE over Time')
-    plt.legend()
-    plt.savefig(hparams.model_dir + "Velocity_RMSE_over_Time.png")
+        # Extract velocities and accelerations at time step t and reshape [num_agents, VxVy]
+        vel = velocities[t, :].reshape(hparams.num_agents, 2)
+        # Calculate averages at time t: [1, VxVy]
+        average_velocity = np.mean(vel, axis=0, keepdims=True)
+        # Compute RMSE: Velocity, Acceleration, Heading
+        rmse = calculate_rmse(vel, average_velocity) # [f]
+        velocity_rmse.append(np.mean(rmse)) #[1]
+        avg_vel_over_time.append(np.mean(average_velocity)) #[1]
 
-def plot_velocity_change(hparams,x_data):
-    # Reshape velocities for one instance assuming the format is [time, agents * features_per]
-    velocities = x_data.reshape(hparams.window, hparams.num_agents, 2)
-    # Calculate the change in velocity components between each time step
-    delta_velocities = np.diff(velocities, axis=0)
-    # Calculate the magnitude of the change for plotting
-    delta_velocities_magnitude = np.linalg.norm(delta_velocities, axis=2)
-    # Sum the magnitude of the change for all agents at each time step
-    total_delta_velocities_magnitude = np.sum(delta_velocities_magnitude, axis=1)
-    print(f"\nvelocities shape {velocities.shape}\n {velocities[:2,:,:]}")
-    print(f"\ndelta vel shape {delta_velocities.shape}\n {delta_velocities[0]}")
-    print(f"\ndelta vel mag shape {delta_velocities_magnitude.shape} {delta_velocities_magnitude[0]}")
-    # Save variables for post processing
-    append_to_csv(velocities, hparams.model_dir + "variables.csv", "Velocity Data")
-    append_to_csv(delta_velocities, hparams.model_dir + "variables.csv", "Velocity Delta Data")
-    append_to_csv(delta_velocities_magnitude, hparams.model_dir + "variables.csv", "Velocity Delta Magnitude Data")
+        if t < hparams.window - 1: # accel has one less time step
+            accel = delta_velocities[t, :].reshape(hparams.num_agents, 2)
+            average_acceleration = np.mean(accel, axis=0, keepdims=True)
+            rmse = calculate_rmse(accel, average_acceleration) # [f]
+            acceleration_rmse.append(np.mean(rmse)) #[1]
+            avg_accel_over_time.append(np.mean(average_acceleration)) #[1]
+
+        rmse = calculate_rmse(heading_angles[t], average_heading_angle[t]) # [1]
+        heading_angle_rmse.append(np.mean(rmse)) #[1]
+   
+    ## Save variables for post processing
     append_to_csv(total_delta_velocities_magnitude, hparams.model_dir + "variables.csv", "Total Velocity Del Mag Data")
-    # Plotting
+    append_to_csv(total_delta_accelerations_magnitude, hparams.model_dir + "variables.csv", "\nTotal Acceleration Del Mag Data")
+    append_to_csv(total_delta_heading, hparams.model_dir + "variables.csv", "\nTotal Heading Del Mag Data")
+    append_to_csv(avg_vel_over_time, hparams.model_dir + "variables.csv", "\nAverage Velocity")
+    append_to_csv(avg_accel_over_time, hparams.model_dir + "variables.csv", "\nAverage Acceleration")
+    append_to_csv(average_heading_angle, hparams.model_dir + "variables.csv", "\nAverage Heading")
+    append_to_csv(velocity_rmse, hparams.model_dir + "variables.csv", "\nVelocity RMSE Over Time")
+    append_to_csv(acceleration_rmse, hparams.model_dir + "variables.csv", "\nAcceleration RMSE Over Time")
+    append_to_csv(heading_angle_rmse, hparams.model_dir + "variables.csv", "\nHeading RMSE Over Time")
+
+    ## PLOTTING
+    # Plot each agent Δ VELOCITY magnitude (=acceleration)
     plt.figure(figsize=(10, 6))
-    # Plot each agent velocity change magnitude
     for agent in range(hparams.num_agents):
         plt.plot(delta_velocities_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
-    # Plot total velocity change magnitude
-    plt.plot(total_delta_velocities_magnitude, label='Total ΔV', color='black', linewidth=2, linestyle='--')
     plt.xlabel('Time Step')
-    plt.ylabel('Change in Velocity Magnitude')
-    plt.title('Velocity Change Magnitude (Agent & Total) vs. Time')
+    plt.ylabel('Δ Velocity Magnitude')
+    plt.title('Δ Velocity Magnitude For Each Agent vs. Time')
+    # plt.legend()
+    plt.savefig(hparams.model_dir + "1Velocity_delta_over_Time.png")
+    # Plot TOTAL Δ VELOCITY magnitude (=total accel)
+    plt.figure(figsize=(10, 6))
+    plt.plot(total_delta_velocities_magnitude, label='Total ΔV', color='black')
+    plt.xlabel('Time Step')
+    plt.ylabel('Total Δ Velocity Magnitude')
+    plt.title('Total Δ Velocity Magnitude vs. Time')
     plt.legend()
-    plt.savefig(hparams.model_dir + "Velocity_delta_over_Time.png")
-
-
-
+    plt.savefig(hparams.model_dir + "1Velocity_delta_Total_over_Time.png")
+    # Plot each agent Δ ACCELERATION magnitude
+    plt.figure(figsize=(10, 6))
+    for agent in range(hparams.num_agents):
+        plt.plot(delta_accelerations_magnitude[:, agent], label=f'Agent {agent+1} ΔV')
+    plt.xlabel('Time Step')
+    plt.ylabel('Δ Acceleration Magnitude')
+    plt.title('Δ Acceleration Magnitude For Each Agent vs. Time')
+    # plt.legend()
+    plt.savefig(hparams.model_dir + "1Accel_delta_over_Time.png")
+    # Plot TOTAL Δ ACCELERATION magnitude
+    plt.figure(figsize=(10, 6))
+    plt.plot(total_delta_accelerations_magnitude, label='Total ΔA', color='black')
+    plt.xlabel('Time Step')
+    plt.ylabel('Total Δ Acceleration Magnitude')
+    plt.title('Total Δ Acceleration Magnitude vs. Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "1Accel_delta_Total_over_Time.png")
+    # Plot TOTAL Δ HEADING magnitude
+    plt.figure(figsize=(10, 6))
+    plt.plot(total_delta_heading, label='Total ΔH', color='black')
+    plt.xlabel('Time Step')
+    plt.ylabel('Total Δ Heading Magnitude')
+    plt.title('Total Δ Heading Magnitude vs. Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "1Head_delta_Total_over_Time.png")
+    # Velocity RMSE
+    plt.figure(figsize=(10, 6))
+    plt.plot(velocity_rmse, label='Velocity RMSE')
+    plt.xlabel('Time Step')
+    plt.ylabel('RMSE')
+    plt.title('Velocity RMSE (Agent - Average) vs. Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "1Velocity_RMSE_over_Time.png")
+    # Acceleration RMSE
+    plt.figure(figsize=(10, 6))
+    plt.plot(acceleration_rmse, label='Acceleration RMSE')
+    plt.xlabel('Time Step')
+    plt.ylabel('RMSE')
+    plt.title('Acceleration RMSE (Agent - Average) vs. Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "1Acceleration_RMSE_over_Time.png")
+    # Heading RMSE
+    plt.figure(figsize=(10, 6))
+    plt.plot(heading_angle_rmse, label='Heading RMSE')
+    plt.xlabel('Time Step')
+    plt.ylabel('RMSE')
+    plt.title('Heading RMSE (Agent - Average) vs. Time')
+    plt.legend()
+    plt.savefig(hparams.model_dir + "1Heading_RMSE_over_Time.png")

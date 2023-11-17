@@ -4,7 +4,7 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
-from savevariables import append_to_csv
+from utils.savevariables import append_to_csv
 
 def print_train_plot(hparams, model_history):
     ## TRAINING CURVE: Loss & Accuracy vs. EPOCH
@@ -120,9 +120,9 @@ def print_cam(hparams, model, x_train):
     sample = x_train[6] # 6 = Auction+
     # Get the class activation map for that sample
     last_cov_layer=-5 if hparams.output_type == 'mh' else -3 # multihead v2 has 2 extra layers at end
-    heatmap = get_cam(model, sample, model.layers[last_cov_layer].name)
+    heatmap = get_cam(hparams, model, sample, model.layers[last_cov_layer].name)
     # Save CAM variable for postprocessing
-    append_to_csv(heatmap, hparams.model_dir + "variables.csv", "CAM Data")
+    append_to_csv(heatmap, hparams.model_dir + "variables.csv", "\nCAM Data")
     ## Visualize Class Activation Map
     # ALL FEATURES: Plot the heatmap values along with the time series data for all features (all agents) in that sample
     plt.figure(figsize=(10, 8))
@@ -145,7 +145,7 @@ def print_cam(hparams, model, x_train):
     plt.title(f"Class Activation Map vs. One Agent's Input Features")
     plt.savefig(hparams.model_dir + "CAM_one.png")
 
-def get_cam(model, sample, last_conv_layer_name):
+def get_cam(hparams, model, sample, last_conv_layer_name):
     # This function requires the trained FCN model, input sample, and the name of the last convolutional layer
     # Get the model of the intermediate layers
     cam_model = tf.keras.models.Model(
@@ -154,7 +154,7 @@ def get_cam(model, sample, last_conv_layer_name):
     # Get the last conv_layer outputs and full model predictions
     with tf.GradientTape() as tape:
         conv_outputs, predictions = cam_model(np.array([sample]))
-        predicted_class = tf.argmax(predictions[0]) # predicted class
+        predicted_class = tf.argmax(predictions[0]) # predicted class index
         predicted_class_val = predictions[:, predicted_class] # predicted class probability
     # Get the gradients and pooled gradients
     grads = tape.gradient(predicted_class_val, conv_outputs) # gradients between predicted class probability WRT CONV outputs maps
@@ -162,9 +162,11 @@ def get_cam(model, sample, last_conv_layer_name):
     # Multiply pooled gradients (importance) with the conv layer output, then average across all feature maps, to get the 2D heatmap
     # Heatmap highlights areas that most influence models prediction
     heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
-    # Normalize the heatmap (between 0 and largest feature value in sample)
-    heatmap = np.maximum(heatmap, 0) / np.max(heatmap)
-    heatmap = heatmap * np.max(sample)
+    # Normalize heatmap
+    heatmap = np.maximum(heatmap, 0) / np.max(heatmap) # normalize values [0,1]
+    # heatmap = heatmap * np.max(sample) # scale to sample maximum
+    # print(f"Heatmap shape {heatmap.shape} \n heatmap values \n {heatmap} ")
+    # append_to_csv(heatmap, hparams.model_dir + "variables.csv", "\nHeatmap")
     return heatmap[0]
 
 def print_tsne(hparams, tsne_input, labels, title, perplexity):

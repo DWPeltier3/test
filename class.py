@@ -18,9 +18,12 @@ GPUs=print_resources() # computation resources available
 hparams = params.get_hparams() # parse BASH run-time hyperparameters (used throughout script below)
 params.save_hparams(hparams) # create model folder and save hyperparameters list .txt
 
+
 ## DEFINE LABELS
 class_names = ['Greedy', 'Greedy+', 'Auction', 'Auction+']; hparams.class_names=class_names
 attribute_names = ["COMMS", "PRONAV"]; hparams.attribute_names=attribute_names
+
+
 ## IMPORT DATA
 x_train, y_train, x_test, y_test, cs_idx, input_shape, output_shape = import_data(hparams)
 ## CREATE DATASET OBJECTS (to allow multi-GPU training)

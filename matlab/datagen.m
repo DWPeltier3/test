@@ -9,8 +9,8 @@ clear all;
 seedrange=1200; % # of samples (runs) to collect (per algorithm)
 
 %% Simulation Inputs
-N_attacker=100;     % number of attackers
-N_defender=100;     % number of defenders (agents that kill; "attackers" for ONR)
+N_attacker=25;     % number of attackers
+N_defender=25;     % number of defenders (agents that kill; "attackers" for ONR)
 Defender_v_max=1;   % defender velocity maximum
 do_plot=false;
 final_fraction=0;   % final proportion of attackers remaining vs. #defenders
@@ -27,6 +27,8 @@ data_g={};
 data_gp={};
 data_a={};
 data_ap={};
+
+
 % run simulations and record data
 for seed=1:seedrange
 
@@ -51,12 +53,14 @@ end
 
 %% Save data matricies
 if savemat
-    data=data_g; %save each class' data to 'data' for ease of Numpy conversion
-    save('data_g.mat','data')
-    data=data_gp;
-    save('data_gp.mat','data')
-    data=data_a;
-    save('data_a.mat','data')
-    data=data_ap;
-    save('data_ap.mat','data')
+    %% Specify folder path
+    folderPath = '/home/donald.peltier/swarm/data/mat_files/50v50_r4800_c4_a10/'; % Replace with your desired folder path
+    data = data_g; % Save each class' data to 'data' for ease of Numpy conversion
+    save([folderPath 'data_g.mat'], 'data')
+    data = data_gp;
+    save([folderPath 'data_gp.mat'], 'data')
+    data = data_a;
+    save([folderPath 'data_a.mat'], 'data')
+    data = data_ap;
+    save([folderPath 'data_ap.mat'], 'data')
 end
