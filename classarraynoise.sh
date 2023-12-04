@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=swarm-class
-#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class_CNNnoise%a.txt
+#SBATCH --output=/home/donald.peltier/swarm/logs/swarm-class_LSTMnoise%a.txt
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
@@ -19,10 +19,11 @@ source activate swarm
 python class.py \
 --mode="train" \
 --trained_model="/home/donald.peltier/swarm/model/swarm_class11-01_11-08-31_RT_TRVmhWF_rs/model.keras" \
---model_dir="/home/donald.peltier/swarm/model/swarm_class_CNNnoise${SLURM_ARRAY_TASK_ID}/" \
---data_path="/home/donald.peltier/swarm/data/data_10v10_r4800s_4cl_a10_noise${SLURM_ARRAY_TASK_ID}.npz" \
+--model_dir="/home/donald.peltier/swarm/model/swarm_class_LSTMnoise${SLURM_ARRAY_TASK_ID}/" \
+--data_path="/home/donald.peltier/swarm/data/Noise1/data_10v10_r4800s_4cl_a10_noise${SLURM_ARRAY_TASK_ID}.npz" \
 --window=-1 \
---model_type="cn" \
+--features="pv" \
+--model_type="lstm" \
 --output_type="mh" \
 --output_length="vec" \
 --dropout=0. \
@@ -32,11 +33,11 @@ python class.py \
 --initial_learning_rate=0.0001 \
 --callback_list="checkpoint, early_stopping, csv_log" \
 --patience=50 \
---tune_type="r" \
---tune_epochs=1000 \
 --num_epochs=1000 \
 --batch_size=50 \
---train_val_split=0.2 \
+--val_split=0.2 \
+--tune_type="r" \
+--tune_epochs=1000 \
 
 ## NOTES
 # mode = 'train' or 'predict'

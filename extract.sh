@@ -6,7 +6,6 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --time=24:00:00
-#SBATCH --partition=beards
 
 . /etc/profile
 
@@ -14,4 +13,4 @@ module load lang/miniconda3/23.1.0
 
 source activate swarm
 
-python extract.py \
+python extractnoise.py \

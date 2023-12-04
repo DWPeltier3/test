@@ -20,7 +20,7 @@ scaling_factor = args.scaling_factor
 print(f"Scaling factor: {scaling_factor}")
 
 ## IMPORT MATLAB matrix as np array
-data_folder='/home/donald.peltier/swarm/data/mat_files/100v100_r4800_c4_a10_ns/' # folder that contains .mat files
+data_folder='/home/donald.peltier/swarm/data/mat_files/100v100_r4800_c4_a10/' # folder that contains .mat files
 data1=data_folder+'data_g.mat'
 data2=data_folder+'data_gp.mat'
 data3=data_folder+'data_a.mat'
@@ -102,7 +102,7 @@ print('data shape:',data.shape)
 label = np.vstack((np.zeros((run1,1),dtype=int), np.ones((run2,1),dtype=int), 2*np.ones((run3,1),dtype=int), 3*np.ones((run4,1),dtype=int))) #np.ones default type is float64
 print('label shape', label.shape)
 print('label sample', label[c1si:c1si+5],'\n', label[c2si:c2si+5],'\n', label[c3si:c3si+5],'\n', label[c4si:c4si+5])
-'''
+
 ## ADD NOISE TO DATA (MEASUREMENTS)
 # Define your noise scales:
 # scaling_factor=0.02 # noise percentage of measurement
@@ -165,7 +165,7 @@ def add_noise(data, noise_scale_position, noise_scale_velocity):
     return noisy_data
 # Add noise to your data
 data = add_noise(data, noise_scale_position, noise_scale_velocity)
-'''
+
 ## SPLIT DATA (TRAIN & TEST)
 test_percentage=0.25
 x_c1train, x_c1test, y_c1train, y_c1test = train_test_split(data[:c2si], label[:c2si], test_size=test_percentage, random_state=0) #split each category separately (equal representation during training and testing)

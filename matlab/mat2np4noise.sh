@@ -16,4 +16,4 @@ module load lang/miniconda3/23.1.0
 source activate swarm
 
 scaling_factor=$(echo "scale=2; ${SLURM_ARRAY_TASK_ID}/100" | bc)
-python mat2np4.py --scaling_factor $scaling_factor
+python mat2np4noise.py --scaling_factor $scaling_factor

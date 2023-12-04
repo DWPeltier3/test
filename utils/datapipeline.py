@@ -18,7 +18,7 @@ def import_data(hparams):
         feature_names = ['Vx','Vy']
     elif hparams.features == 'p':
         feature_names = ['Px','Py']
-    elif hparams.features == 'pv':
+    else:
         feature_names = ['Px','Py','Vx','Vy']
     hparams.feature_names = feature_names
 
@@ -32,16 +32,16 @@ def import_data(hparams):
     ## CHARACTERIZE DATA
     time_steps=x_train.shape[1]
     num_features=x_train.shape[2]
-    num_features_per = 4
+    num_features_per = len(hparams.feature_names) # was 4, hopefully this helps for variable num_features
     num_agents=num_features//num_features_per
     num_classes=len(hparams.class_names); hparams.num_classes=num_classes
     num_attributes=len(hparams.attribute_names)
     
     ## VELOCITY or POSITION ONLY
     v_idx = num_agents * 2
-    if hparams.features == 'v' or hparams.features == 'p':
-        num_features_per = 2
-        num_features = num_agents * num_features_per
+    # if hparams.features == 'v' or hparams.features == 'p':
+    #     num_features_per = 2
+    #     num_features = num_agents * num_features_per
     if hparams.features == 'v':
         print('\n*** VELOCITY ONLY ***')
         x_train = x_train[:, :, v_idx:]

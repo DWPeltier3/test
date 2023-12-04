@@ -7,7 +7,7 @@
 #SBATCH --mem=16G
 #SBATCH --time=24:00:00
 #SBATCH --partition=beards
-#SBATCH --array=1-24
+#SBATCH --array=1-4
 
 . /etc/profile
 
@@ -16,27 +16,38 @@ module load app/graphviz/8.0.5
 
 source activate swarm
 
-# Number of array = #model type * #window * #swarm size
+## Number of array = #model type * #window * #swarm size
 # Define model types and output lengths
-model_types=("cn" "fcn" "tr" "tr")
-output_lengths=("vec" "vec" "vec" "seq")
+# model_types=("cn" "fcn" "tr" "tr")
+# output_lengths=("vec" "vec" "vec" "seq")
+model_types=("lstm") 
+output_lengths=("vec")
 # Define windows and swarm sizes
-windows=(20 -1)
-swarm_sizes=(25 50 75)
+# windows=(20 -1)
+windows=(-1)
+swarm_sizes=(25 50 75 100)
+# swarm_sizes=(25)
 
 # Calculate the combination index
 array_index=$((SLURM_ARRAY_TASK_ID - 1))
 
 # Determine the combination
-model_output_index=$((array_index / 6)) # 6 = 2 windows * 3 swarm sizes
-window_index=$(((array_index / 3) % 2)) # Cycles every 3 jobs, toggles every 6
-swarm_index=$((array_index % 3))       # Cycles every job, repeats every 3
+# model_output_index=$((array_index / 6)) # changes every 6 = 2 windows * 3 swarm sizes
+# model_output_index=$((array_index / 2)) # changes every 2 = 2 windows * 1 swarm sizes
+model_output_index=0 # constant
+# window_index=$(((array_index / 3) % 2)) # changes every 3 jobs, toggles every 6
+# window_index=$((array_index % 2)) # changes every job
+window_index=0 # constant
+# swarm_index=$((array_index % 3)) # Cycles every job, repeats every 3
+swarm_index=$((array_index)) # Cycles every job
+# swarm_index=0 # constant
 
 # Get model type, output length, and other parameters from the calculated index
 model_type=${model_types[$model_output_index]}
 output_length=${output_lengths[$model_output_index]}
 window=${windows[$window_index]}
 swarm_size=${swarm_sizes[$swarm_index]}
+
 
 python class.py \
 --mode="train" \
