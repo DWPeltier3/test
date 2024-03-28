@@ -46,6 +46,3 @@ Copyright 2024 Donald Peltier
    See the License for the specific language governing permissions and
    limitations under the License.
 
-## How to Cite
-[If applicable, provide information on how to cite your work or the related research paper.]
-
