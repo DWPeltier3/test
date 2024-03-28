@@ -18,11 +18,11 @@ This repository hosts the source code used in the research paper titled "Swarm C
    
 To create the environment, run:
 
-conda env create -f swarm.yml
+    conda env create -f swarm.yml
 
 Activate the newly created environment:
 
-conda activate Swarm-NN-TSC
+    conda activate Swarm-NN-TSC
 
 
 ### Running the Code
