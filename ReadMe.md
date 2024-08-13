@@ -22,7 +22,7 @@ To create the environment, run:
 
 Activate the newly created environment:
 
-    conda activate Swarm-NN-TSC
+    conda activate swarm
 
 
 ### Running the Code
